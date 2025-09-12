@@ -12,6 +12,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
@@ -21,6 +22,7 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.N
 
 @Configuration
 @EnableKafka
+@Lazy
 public class KafkaConfig {
 
     @Value("${kafka.bootstrap-servers}")
@@ -62,6 +64,7 @@ public class KafkaConfig {
 
     // ✅ Producer config
     @Bean
+    @Lazy
     public ProducerFactory<String, String> producerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -80,12 +83,14 @@ public class KafkaConfig {
     }
 
     @Bean
+    @Lazy
     public KafkaTemplate<String, String> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 
     // ✅ Consumer config
     @Bean
+    @Lazy
     public ConsumerFactory<String, NotificationRequest> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -109,9 +114,11 @@ public class KafkaConfig {
     }
 
     @Bean
+    @Lazy
     public ConcurrentKafkaListenerContainerFactory<String, NotificationRequest> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, NotificationRequest> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         return factory;
     }
 }
+// njju nhihui hhiuhuihiuh hiuh hihihyi
