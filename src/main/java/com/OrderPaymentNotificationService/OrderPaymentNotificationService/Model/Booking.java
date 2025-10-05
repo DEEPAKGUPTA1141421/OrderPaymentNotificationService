@@ -1,3 +1,4 @@
+
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model;
 
 import java.time.Instant;
@@ -23,6 +24,9 @@ public class Booking {
     @Column(nullable = false)
     private UUID shopId;
 
+    @Column(nullable = false)
+    private UUID deliveryAddress;
+
     @Enumerated(EnumType.STRING)
     private Status status = Status.Initiated; // PENDING, CONFIRMED, CANCELLED, FAILED
 
@@ -42,5 +46,6 @@ public class Booking {
     @PostPersist
     public void sendEmail() {
         // send email logic
+        System.out.println("Booking created with ID: " + id);
     }
 }

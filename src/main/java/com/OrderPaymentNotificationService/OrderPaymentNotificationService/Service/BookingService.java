@@ -71,6 +71,7 @@ public class BookingService extends BaseService {
                     BookingItem bi = new BookingItem();
                     bi.setBooking(booking);
                     bi.setProductId(ci.getProductId());
+                    bi.setVariantId(ci.getVariantId()); // assuming no variant info in CartItemDto
                     bi.setQuantity(ci.getQuantity());
                     bi.setPrice(String.valueOf(ci.getPrice())); // store price as string
 

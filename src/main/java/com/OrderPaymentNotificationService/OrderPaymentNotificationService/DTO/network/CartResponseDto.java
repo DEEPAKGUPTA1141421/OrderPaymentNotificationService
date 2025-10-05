@@ -2,16 +2,16 @@ package com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 import java.util.UUID;
 
-import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.network.CartResponseDto.CartItemDto;
-
-@Data
 @Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class CartResponseDto {
@@ -27,13 +27,15 @@ public class CartResponseDto {
     private double gstCharge;
     private double grandTotal;
 
-    @Data
+    @Getter
+    @Setter
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class CartItemDto {
         private UUID id;
         private UUID productId;
+        private UUID variantId;
         private UUID shopId;
         private int quantity;
         private double price;

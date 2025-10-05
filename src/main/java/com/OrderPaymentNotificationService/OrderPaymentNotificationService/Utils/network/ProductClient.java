@@ -15,3 +15,5 @@ public interface ProductClient {
     ApiResponse<CartResponseDto> getCart(@RequestHeader("X-User-Id") UUID userId);
 
 }
+
+// hytyu tgutu
