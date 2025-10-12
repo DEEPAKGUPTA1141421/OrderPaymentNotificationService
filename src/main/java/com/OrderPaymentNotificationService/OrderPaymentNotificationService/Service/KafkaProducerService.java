@@ -1,9 +1,11 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service;
 
+import org.springframework.context.annotation.Lazy;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
+@Lazy
 public class KafkaProducerService {
     private final KafkaTemplate<String, String> kafkaTemplate;
 

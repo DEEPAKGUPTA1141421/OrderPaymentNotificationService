@@ -1,6 +1,1 @@
-spring:
-  datasource:
-    url: jdbc:postgresql://ep-snowy-cell-a5dkbjj0-pooler.us-east-2.aws.neon.tech/cohort?sslmode=require
-    username: cohort_owner
-    password: D2PWOlKHnC4b
-    driver-class-name: org.postgresql.Driver
+

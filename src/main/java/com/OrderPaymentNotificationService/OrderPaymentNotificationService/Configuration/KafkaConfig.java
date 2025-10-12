@@ -12,7 +12,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
@@ -22,7 +21,6 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.N
 
 @Configuration
 @EnableKafka
-@Lazy
 public class KafkaConfig {
 
     @Value("${kafka.bootstrap-servers}")
@@ -40,18 +38,6 @@ public class KafkaConfig {
     @Value("${kafka.sasl.password}")
     private String saslPassword;
 
-    @Value("${kafka.ssl.truststore.type}")
-    private String truststoreType;
-
-    @Value("${kafka.ssl.truststore.location}")
-    private String truststoreLocation;
-
-    @Value("${kafka.ssl.truststore.password}")
-    private String truststorePassword;
-
-    @Value("${kafka.ssl.endpoint.identification.algorithm}")
-    private String sslEndpointAlgorithm;
-
     @Value("${kafka.consumer.group-id}")
     private String consumerGroupId;
 
@@ -62,51 +48,35 @@ public class KafkaConfig {
                 saslPassword);
     }
 
-    // ✅ Producer config
+    // Producer configuration
     @Bean
-    @Lazy
     public ProducerFactory<String, String> producerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
         props.put(SaslConfigs.SASL_MECHANISM, saslMechanism);
         props.put(SaslConfigs.SASL_JAAS_CONFIG, buildJaasConfig());
-
-        props.put("ssl.endpoint.identification.algorithm", sslEndpointAlgorithm);
-        props.put("ssl.truststore.type", truststoreType);
-        props.put("ssl.truststore.location", truststoreLocation);
-        props.put("ssl.truststore.password", truststorePassword);
-
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         return new DefaultKafkaProducerFactory<>(props);
     }
 
     @Bean
-    @Lazy
     public KafkaTemplate<String, String> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
     }
 
-    // ✅ Consumer config
+    // Consumer configuration
     @Bean
-    @Lazy
     public ConsumerFactory<String, NotificationRequest> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
         props.put(SaslConfigs.SASL_MECHANISM, saslMechanism);
         props.put(SaslConfigs.SASL_JAAS_CONFIG, buildJaasConfig());
-
-        props.put("ssl.endpoint.identification.algorithm", sslEndpointAlgorithm);
-        props.put("ssl.truststore.type", truststoreType);
-        props.put("ssl.truststore.location", truststoreLocation);
-        props.put("ssl.truststore.password", truststorePassword);
-
         props.put(ConsumerConfig.GROUP_ID_CONFIG, consumerGroupId);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-
         return new DefaultKafkaConsumerFactory<>(
                 props,
                 new StringDeserializer(),
@@ -114,11 +84,10 @@ public class KafkaConfig {
     }
 
     @Bean
-    @Lazy
     public ConcurrentKafkaListenerContainerFactory<String, NotificationRequest> kafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, NotificationRequest> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         return factory;
     }
 }
-// njju nhihui hhiuhuihiuh hiuh hihihyi
+// khhuuj hyuhuhu huhuuhhukjnn

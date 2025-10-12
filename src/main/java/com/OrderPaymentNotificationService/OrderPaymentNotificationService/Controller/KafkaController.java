@@ -2,11 +2,14 @@ package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Cont
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.NotificationRequest;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.KafkaProducerService;
+
+import org.springframework.context.annotation.Lazy;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/v1/kafka")
+@Lazy
 public class KafkaController {
 
     private final KafkaProducerService producerService;
