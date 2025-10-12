@@ -1,9 +1,10 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service;
 
-import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Configuration.KeyLoader;
 import io.jsonwebtoken.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Configuration.KeyLoader;
 
 import jakarta.annotation.PostConstruct;
 import java.security.PrivateKey;

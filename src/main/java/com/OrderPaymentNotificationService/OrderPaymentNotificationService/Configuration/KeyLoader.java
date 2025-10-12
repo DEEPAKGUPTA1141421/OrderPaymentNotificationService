@@ -9,7 +9,9 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Component;
 
+@Component
 public class KeyLoader {
 
     public static PrivateKey loadPrivateKey(String path) throws Exception {
