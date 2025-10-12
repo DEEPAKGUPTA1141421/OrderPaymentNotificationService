@@ -2,6 +2,7 @@ package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Serv
 
 import io.jsonwebtoken.*;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Configuration.KeyLoader;
@@ -13,6 +14,7 @@ import java.util.Date;
 import java.util.UUID;
 
 @Service
+@Lazy
 public class JwtService {
 
     private final KeyLoader keyLoader;

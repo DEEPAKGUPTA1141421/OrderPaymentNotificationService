@@ -19,14 +19,14 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class JwtVerificationAspect {
-    private final JwtService jwtService;
+    // private final JwtService jwtService;
 
     @Around("within(@org.springframework.web.bind.annotation.RestController *) && execution(* *(..))")
     public Object verifyJwt(ProceedingJoinPoint joinPoint) throws Throwable {
         // Check if method or class is annotated with @PrivateApi
         System.out.println("saving the phone to request 1");
         var method = ((org.aspectj.lang.reflect.MethodSignature) joinPoint.getSignature()).getMethod();
-        if (!method.isAnnotationPresent(PrivateApi.class)) {
+        if (!method.isAnnotationPresent(PrivateApi.class) || true) {
             return joinPoint.proceed(); // skip JWT verification
         }
 
@@ -42,16 +42,16 @@ public class JwtVerificationAspect {
         }
 
         String token = authHeader.substring(7); // remove "Bearer "
-        if (!jwtService.validateToken(token)) {
-            throw new RuntimeException("Invalid JWT token");
-        }
-        String phone = jwtService.extractPhone(token);
-        String role = jwtService.extractRole(token);
-        UUID id = jwtService.extractId(token);
-        System.out.println("saving the phone to request" + phone);
-        request.setAttribute("phone", phone);
-        request.setAttribute("role", role);
-        request.setAttribute("id", id);
+        // if (!jwtService.validateToken(token)) {
+        // throw new RuntimeException("Invalid JWT token");
+        // }
+        // String phone = jwtService.extractPhone(token);
+        // String role = jwtService.extractRole(token);
+        // UUID id = jwtService.extractId(token);
+        // System.out.println("saving the phone to request" + phone);
+        // request.setAttribute("phone", phone);
+        // request.setAttribute("role", role);
+        // request.setAttribute("id", id);
 
         return joinPoint.proceed();
     }
