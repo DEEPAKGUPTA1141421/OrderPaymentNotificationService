@@ -48,30 +48,29 @@ jobs:
             --platform managed \
             --region asia-south1 \
             --allow-unauthenticated \
-            --set-secrets \
-              DB_URL=DB_URL:latest, \
-              DB_USERNAME=DB_USERNAME:latest, \
-              DB_PASSWORD=DB_PASSWORD:latest, \
-              REDIS_HOST=REDIS_HOST:latest, \
-              REDIS_PORT=REDIS_PORT:latest, \
-              REDIS_USERNAME=REDIS_USERNAME:latest, \
-              REDIS_PASSWORD=REDIS_PASSWORD:latest, \
-              TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest, \
-              TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest, \
-              TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest, \
-              SENDGRID_API_KEY=SENDGRID_API_KEY:latest, \
-              SENDGRID_FROM_EMAIL=SENDGRID_FROM_EMAIL:latest, \
-              KAFKA_BOOTSTRAP_SERVERS=KAFKA_BOOTSTRAP_SERVERS:latest, \
-              KAFKA_SASL_USERNAME=KAFKA_SASL_USERNAME:latest, \
-              KAFKA_SASL_PASSWORD=KAFKA_SASL_PASSWORD:latest, \
-              GOOGLE_API_KEY=GOOGLE_API_KEY:latest, \
-              ELASTICSEARCH_URL=ELASTICSEARCH_URL:latest, \
-              ELASTICSEARCH_USERNAME=ELASTICSEARCH_USERNAME:latest, \
-              ELASTICSEARCH_API_KEY=ELASTICSEARCH_API_KEY:latest, \
-              AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest, \
-              AWS_SECRET_KEY=AWS_SECRET_KEY:latest, \
-              AWS_REGION=AWS_REGION:latest, \
-              AWS_S3_BUCKET=AWS_S3_BUCKET:latest, \
-              CLOUDINARY_CLOUD_NAME=CLOUDINARY_CLOUD_NAME:latest, \
-              CLOUDINARY_API_KEY=CLOUDINARY_API_KEY:latest, \
-              CLOUDINARY_API_SECRET=CLOUDINARY_API_SECRET:latest
+            --set-secrets DB_URL=DB_URL:latest \
+            --set-secrets DB_USERNAME=DB_USERNAME:latest \
+            --set-secrets DB_PASSWORD=DB_PASSWORD:latest \
+            --set-secrets REDIS_HOST=REDIS_HOST:latest \
+            --set-secrets REDIS_PORT=REDIS_PORT:latest \
+            --set-secrets REDIS_USERNAME=REDIS_USERNAME:latest \
+            --set-secrets REDIS_PASSWORD=REDIS_PASSWORD:latest \
+            --set-secrets TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest \
+            --set-secrets TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest \
+            --set-secrets TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest \
+            --set-secrets SENDGRID_API_KEY=SENDGRID_API_KEY:latest \
+            --set-secrets SENDGRID_FROM_EMAIL=SENDGRID_FROM_EMAIL:latest \
+            --set-secrets KAFKA_BOOTSTRAP_SERVERS=KAFKA_BOOTSTRAP_SERVERS:latest \
+            --set-secrets KAFKA_SASL_USERNAME=KAFKA_SASL_USERNAME:latest \
+            --set-secrets KAFKA_SASL_PASSWORD=KAFKA_SASL_PASSWORD:latest \
+            --set-secrets GOOGLE_API_KEY=GOOGLE_API_KEY:latest \
+            --set-secrets ELASTICSEARCH_URL=ELASTICSEARCH_URL:latest \
+            --set-secrets ELASTICSEARCH_USERNAME=ELASTICSEARCH_USERNAME:latest \
+            --set-secrets ELASTICSEARCH_API_KEY=ELASTICSEARCH_API_KEY:latest \
+            --set-secrets AWS_ACCESS_KEY=AWS_ACCESS_KEY:latest \
+            --set-secrets AWS_SECRET_KEY=AWS_SECRET_KEY:latest \
+            --set-secrets AWS_REGION=AWS_REGION:latest \
+            --set-secrets AWS_S3_BUCKET=AWS_S3_BUCKET:latest \
+            --set-secrets CLOUDINARY_CLOUD_NAME=CLOUDINARY_CLOUD_NAME:latest \
+            --set-secrets CLOUDINARY_API_KEY=CLOUDINARY_API_KEY:latest \
+            --set-secrets CLOUDINARY_API_SECRET=CLOUDINARY_API_SECRET:latest
