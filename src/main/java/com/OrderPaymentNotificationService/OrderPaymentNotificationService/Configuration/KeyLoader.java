@@ -8,6 +8,8 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
+import org.springframework.core.io.ClassPathResource;
+
 public class KeyLoader {
 
     public static PrivateKey loadPrivateKey(String path) throws Exception {
@@ -27,10 +29,12 @@ public class KeyLoader {
     private static byte[] readPem(String path) throws Exception {
         InputStream is;
         if (path.startsWith("classpath:")) {
-            String resourcePath = path.replace("classpath:", "/");
-            is = KeyLoader.class.getResourceAsStream(resourcePath);
-            if (is == null)
+            String resourcePath = path.replace("classpath:", "");
+            ClassPathResource resource = new ClassPathResource(resourcePath);
+            if (!resource.exists()) {
                 throw new IllegalArgumentException("File not found: " + path);
+            }
+            is = resource.getInputStream();
         } else {
             is = java.nio.file.Files.newInputStream(java.nio.file.Path.of(path));
         }
