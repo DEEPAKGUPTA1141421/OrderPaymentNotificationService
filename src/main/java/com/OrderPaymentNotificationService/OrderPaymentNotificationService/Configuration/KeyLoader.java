@@ -29,7 +29,11 @@ public class KeyLoader {
     private static byte[] readPem(String path) throws Exception {
         InputStream is;
         if (path.startsWith("classpath:")) {
+            // Remove prefix and ensure path starts with "/"
             String resourcePath = path.replace("classpath:", "");
+            if (!resourcePath.startsWith("/")) {
+                resourcePath = "/" + resourcePath;
+            }
             ClassPathResource resource = new ClassPathResource(resourcePath);
             if (!resource.exists()) {
                 throw new IllegalArgumentException("File not found: " + path);
@@ -46,6 +50,7 @@ public class KeyLoader {
                 .replaceAll("-----BEGIN (.*)-----", "")
                 .replaceAll("-----END (.*)-----", "")
                 .replaceAll("\\s+", "");
+
         return Base64.getDecoder().decode(pem);
     }
 }
