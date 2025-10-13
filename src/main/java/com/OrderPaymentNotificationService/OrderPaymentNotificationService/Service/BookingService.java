@@ -32,10 +32,15 @@ public class BookingService extends BaseService {
     private final RedisLockService redisLockService;
 
     @Transactional
-    public ApiResponse<Object> createBookingFromCart() {
+    public ApiResponse<Object> createBookingFromCart(UUID userId) {
         try {
-            // Call Product Service via Feign
-            UUID userId = getId();
+
+            // 1️⃣ Try acquiring the lock
+            boolean lockAcquired = redisLockService.acquireCartLock(userId, 3); // TTL 3 minutes
+            if (!lockAcquired) {
+                return new ApiResponse<>(false, "Booking already in progress. Please wait 3 minutes.", null, 429);
+            }
+
             ApiResponse<CartResponseDto> response = productClient.getCart(userId);
 
             // Check network / 2xx status
@@ -65,7 +70,9 @@ public class BookingService extends BaseService {
                 booking.setItems(new ArrayList<>());
 
                 for (CartItemDto ci : items) {
-                    boolean takeLock = redisLockService.acquireLock(userId, ci.getProductId(), ci.getQuantity(), 10);
+                    boolean takeLock = redisLockService.acquireLock(RedisLockService.LOCK_PREFIX, userId,
+                            ci.getProductId(),
+                            ci.getQuantity(), 10);
                     if (!takeLock)
                         new RuntimeException("Cannot acquire lock for product " + ci.getProductId());
                     BookingItem bi = new BookingItem();
@@ -102,3 +109,5 @@ public class BookingService extends BaseService {
 }
 
 /// nhjojj hkjhhh hhh huhu huhj ujibhuhu hhhjj
+///
+/// //  hyhyuh hiuujiju huijuuj iujujuij hujuuj

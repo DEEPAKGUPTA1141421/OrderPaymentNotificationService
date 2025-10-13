@@ -26,7 +26,7 @@ public class JwtVerificationAspect {
         // Check if method or class is annotated with @PrivateApi
         System.out.println("saving the phone to request 1");
         var method = ((org.aspectj.lang.reflect.MethodSignature) joinPoint.getSignature()).getMethod();
-        if (!method.isAnnotationPresent(PrivateApi.class) || true) {
+        if (!method.isAnnotationPresent(PrivateApi.class)) {
             return joinPoint.proceed(); // skip JWT verification
         }
 
@@ -53,6 +53,14 @@ public class JwtVerificationAspect {
         // request.setAttribute("role", role);
         // request.setAttribute("id", id);
 
-        return joinPoint.proceed();
+        // ✅ Save header in ThreadLocal
+        RequestContext.setAuthHeader(authHeader);
+
+        try {
+            System.out.println("Control pass to function after set Request Context");
+            return joinPoint.proceed();
+        } finally {
+            RequestContext.clear(); // prevent leaks
+        }
     }
 }

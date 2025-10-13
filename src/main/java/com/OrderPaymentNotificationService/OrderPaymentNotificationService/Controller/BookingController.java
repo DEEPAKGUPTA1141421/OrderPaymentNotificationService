@@ -1,7 +1,10 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Controller;
 
+import java.util.UUID;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,8 +22,8 @@ public class BookingController {
 
     @GetMapping("/checkout")
     @PrivateApi
-    public ResponseEntity<?> checkout() {
-        ApiResponse<Object> response = bookingService.createBookingFromCart();
+    public ResponseEntity<?> checkout(@RequestHeader("X-User-Id") UUID userId) {
+        ApiResponse<Object> response = bookingService.createBookingFromCart(userId);
         return ResponseEntity.status(response.statusCode()).body(response);
     }
 

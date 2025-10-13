@@ -11,10 +11,11 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class RedisLockService {
     private final StringRedisTemplate redisTemplate;
-    private static final String LOCK_PREFIX = "lock:product:";
+    public static final String LOCK_PREFIX = "lock:product:";
+    public static final String CART_LOCK_PREFIX = "lock:cart:";
 
-    public boolean acquireLock(UUID userId, UUID productId, int quantity, long ttlMinutes) {
-        String key = buildKey(userId, productId);
+    public boolean acquireLock(String lock_prefix, UUID userId, UUID productId, int quantity, long ttlMinutes) {
+        String key = buildKey(lock_prefix, userId, productId);
 
         Boolean success = redisTemplate.opsForValue()
                 .setIfAbsent(key, String.valueOf(quantity), Duration.ofMinutes(ttlMinutes));
@@ -22,19 +23,19 @@ public class RedisLockService {
         return Boolean.TRUE.equals(success);
     }
 
-    public void releaseLock(UUID userId, UUID productId) {
-        String key = buildKey(userId, productId);
+    public void releaseLock(String lock_prefix, UUID userId, UUID productId) {
+        String key = buildKey(lock_prefix, userId, productId);
         redisTemplate.delete(key);
     }
 
-    public Integer getLockedQuantity(UUID userId, UUID productId) {
-        String key = buildKey(userId, productId);
+    public Integer getLockedQuantity(String lock_prefix, UUID userId, UUID productId) {
+        String key = buildKey(lock_prefix, userId, productId);
         String value = redisTemplate.opsForValue().get(key);
         return value != null ? Integer.parseInt(value) : null;
     }
 
-    public boolean isLocked(UUID userId, UUID productId) {
-        String key = buildKey(userId, productId);
+    public boolean isLocked(String lock_prefix, UUID userId, UUID productId) {
+        String key = buildKey(lock_prefix, userId, productId);
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
     }
 
@@ -52,7 +53,24 @@ public class RedisLockService {
         return total;
     }
 
-    private String buildKey(UUID userId, UUID productId) {
-        return LOCK_PREFIX + productId + ":" + userId;
+    private String buildKey(String lock_prefix, UUID userId, UUID productId) {
+        return lock_prefix + productId + ":" + userId;
+    }
+
+    public boolean acquireCartLock(UUID userId, long ttlMinutes) {
+        String key = CART_LOCK_PREFIX + userId;
+        Boolean success = redisTemplate.opsForValue()
+                .setIfAbsent(key, "locked", Duration.ofMinutes(ttlMinutes));
+        return Boolean.TRUE.equals(success);
+    }
+
+    public void releaseCartLock(UUID userId) {
+        String key = CART_LOCK_PREFIX + userId;
+        redisTemplate.delete(key);
+    }
+
+    public boolean isCartLocked(UUID userId) {
+        String key = CART_LOCK_PREFIX + userId;
+        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
     }
 }
