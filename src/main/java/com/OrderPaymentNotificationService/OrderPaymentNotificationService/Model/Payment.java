@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
 // Payment.java
 @Entity
 @Table(name = "payments")
@@ -20,9 +22,10 @@ public class Payment {
     private UUID bookingId;
 
     @Enumerated(EnumType.STRING)
-    private Status status = Status.PENDING; // PENDING, SUCCESS, FAILED
+    private Status status;
 
     @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<Transaction> transactions = new ArrayList<>();
 
     @Column(nullable = false)
@@ -30,6 +33,10 @@ public class Payment {
     private String paidAmount = "0";
 
     public enum Status {
-        PENDING, SUCCESS, FAILED
+        INITIATED, PENDING, SUCCESS, FAILED, REVERSED, REVERSED_FAILED, ABONDENED
+    }
+
+    @PostPersist
+    public void checkTranscationStatus() {
     }
 }

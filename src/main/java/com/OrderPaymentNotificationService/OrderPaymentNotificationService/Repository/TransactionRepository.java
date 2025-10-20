@@ -9,4 +9,5 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
+
 }

@@ -7,6 +7,8 @@ import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -20,6 +22,7 @@ public class Transaction {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "payment_id")
+    @JsonBackReference
     private Payment payment;
 
     @Enumerated(EnumType.STRING)
@@ -30,6 +33,12 @@ public class Transaction {
 
     @Column(nullable = false)
     private String amount; // in paise
+
+    @Column(name = "order_id")
+    private String orderId;
+
+    @Column(name = "transcation_number")
+    private UUID transcationNumber;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -44,6 +53,6 @@ public class Transaction {
     }
 
     public enum Status {
-        PENDING, SUCCESS, FAILED
+        INITIATED, PENDING, SUCCESS, FAILED, REVERSED, REVERSED_FAILED, ABONDENED
     }
 }
