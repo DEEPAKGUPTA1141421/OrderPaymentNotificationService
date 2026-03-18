@@ -1,7 +1,10 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ranking;
 
+import org.springframework.stereotype.Service;
+
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.ShopStats;
 
+@Service
 public class ScoreCalculator {
     // weights - tune these values
     private final double ORDER_WEIGHT = 0.5;
