@@ -1,30 +1,27 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service;
 
-import jakarta.servlet.http.HttpServletRequest;
-
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.filter.UserPrincipal;
 
 @Service
 public class BaseService {
-    @Autowired
-    private HttpServletRequest request;
-
-    public String getPhone() {
-        return (String) this.request.getAttribute("phone");
+    public UUID getUserId() {
+        return ((UserPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getId();
     }
 
-    public String getRole() {
-        return (String) this.request.getAttribute("role");
+    public BigDecimal toRupees(BigDecimal paise) {
+        return paise.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
     }
 
-    public UUID getId() {
-        Object idAttr = this.request.getAttribute("id");
-        if (idAttr == null) {
-            return null;
-        }
-        return UUID.fromString(idAttr.toString());
+    public BigDecimal toPaises(BigDecimal rupee) {
+        return rupee
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(0, RoundingMode.HALF_UP);
     }
 }

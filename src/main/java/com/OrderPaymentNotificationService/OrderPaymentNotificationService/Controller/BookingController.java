@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.ApiResponse;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.BookingService;
-import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.annotation.PrivateApi;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,7 +20,6 @@ public class BookingController {
     private final BookingService bookingService;
 
     @GetMapping("/checkout")
-    @PrivateApi
     public ResponseEntity<?> checkout(@RequestHeader("X-User-Id") UUID userId) {
         ApiResponse<Object> response = bookingService.createBookingFromCart(userId);
         return ResponseEntity.status(response.statusCode()).body(response);
