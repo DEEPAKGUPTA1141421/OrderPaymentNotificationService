@@ -4,16 +4,19 @@ import com.phonepe.sdk.pg.Env;
 import com.phonepe.sdk.pg.payments.v2.StandardCheckoutClient;
 import com.phonepe.sdk.pg.payments.v2.models.request.CreateSdkOrderRequest;
 import com.phonepe.sdk.pg.payments.v2.models.response.CreateSdkOrderResponse;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
 import com.phonepe.sdk.pg.common.models.response.OrderStatusResponse;
-import com.phonepe.sdk.pg.common.models.request.RefundRequest;
-import com.phonepe.sdk.pg.common.models.response.RefundResponse;
+
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
+@Slf4j
 public class PhonePeServiceImpl implements PhonePeService {
 
         @Value("${phonepe.clientId}")
@@ -86,11 +89,5 @@ public class PhonePeServiceImpl implements PhonePeService {
                                 clientVersion, ENVIRONMENT);
                 return Map.of("name", "name");
         }
-}
 
-// hyuy7iu huhuiy yy78yhyuy7ui yuy78 yuy78u8 t6uredtryghb gyuty6
-// iuu jiok ilkoklkol olkokol kikoklklkl
-// hhukj kuhjhjjkjnjnnjnjnjnnjnjnjnjhkījujuju
-// huuij uioiouiuiuiu jii uuijiji ijijji jijijkhuhuhh
-// huhuhhuhjhjhjjkjhhjhjhuyuyuhhuhjkjkmuiujujjuijijiij
-// juiuoiiojioji iikk ijkklk
+}

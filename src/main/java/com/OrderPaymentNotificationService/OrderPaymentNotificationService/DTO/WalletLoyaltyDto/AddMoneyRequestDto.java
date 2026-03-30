@@ -41,4 +41,8 @@ public class AddMoneyRequestDto {
     @NotBlank(message = "idempotencyKey is required")
     @Size(max = 100, message = "idempotencyKey max 100 chars")
     private String idempotencyKey;
+
+    @NotBlank(message = "Gateway name is required")
+    @Pattern(regexp = "^(phonepe|razorpay|googlepay)$", message = "Gateway must be one of: phonepe, razorpay, googlepay")
+    String gateway;
 }

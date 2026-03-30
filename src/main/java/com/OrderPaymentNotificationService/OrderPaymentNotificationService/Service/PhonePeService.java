@@ -1,7 +1,6 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service;
 
 import java.util.Map;
-import java.util.UUID;
 
 public interface PhonePeService {
     Map<String, Object> createOrder(String merchantOrderId, String amount, String idempotencyKey);

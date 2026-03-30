@@ -9,9 +9,13 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.C
 public interface PaymentGateway {
     ApiResponse<Object> createOrder(CreateOrderDto dto);
 
+    Map<String, Object> createOrder(String merchandid, String amountInPaises, String Idempotentkey);
+
     ApiResponse<Object> validatePayment(UUID transactionId);
 
     ApiResponse<Object> refundPayment(UUID transactionId, String amount);
 
     ApiResponse<Object> handleWebhook(Map<String, Object> payload);
+
+    ApiResponse<Object> handleWebhookForWallet(Map<String, Object> payload);
 }

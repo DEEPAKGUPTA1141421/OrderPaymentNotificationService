@@ -11,4 +11,11 @@ public class WalletAndLoyalityPointsConstant {
     public static final BigDecimal DAILY_TOPUP_LIMIT_PAISE = BigDecimal.valueOf(20_000L)
             .multiply(BigDecimal.valueOf(100));
     public static final String UPI = "UPI";
+    public static final String COMPLETED = "COMPLETED";
+    public static final String FAILED = "FAILED";
+    public static final String MERCHANT_ORDER_ID = "merchantOrderId";
+    public static final String SUCCESS = "SUCCESS";
+    public static final String PENDING = "PENDING";
+    public static final String ORDER = "ORDER";
+    public static final long MAX_METHODS_PER_USER = 10;
 }

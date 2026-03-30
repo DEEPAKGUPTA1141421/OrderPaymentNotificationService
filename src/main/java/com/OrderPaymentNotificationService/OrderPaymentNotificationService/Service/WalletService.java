@@ -9,26 +9,26 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.WalletTransaction.TransactionType;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.WalletRepository;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.WalletTransactionRepository;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.Strategy.PaymentGateway;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.Strategy.PaymentGatewayFactory;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.OrderPaymentNotificationService.OrderPaymentNotificationService.constant.WalletAndLoyalityPointsConstant.*;
+
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
-import static com.OrderPaymentNotificationService.OrderPaymentNotificationService.constant.WalletAndLoyalityPointsConstant.MAX_TOPUP_PAISE;
-import static com.OrderPaymentNotificationService.OrderPaymentNotificationService.constant.WalletAndLoyalityPointsConstant.DAILY_TOPUP_LIMIT_PAISE;
-import static com.OrderPaymentNotificationService.OrderPaymentNotificationService.constant.WalletAndLoyalityPointsConstant.MAX_BALANCE_PAISE;
-import static com.OrderPaymentNotificationService.OrderPaymentNotificationService.constant.WalletAndLoyalityPointsConstant.UPI;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +36,7 @@ import static com.OrderPaymentNotificationService.OrderPaymentNotificationServic
 public class WalletService extends BaseService {
     private final WalletRepository walletRepo;
     private final WalletTransactionRepository txRepo;
+    private final PaymentGatewayFactory gatewayFactory;
 
     @Transactional(readOnly = true)
     public ApiResponse<Object> getWallet() {
@@ -73,7 +74,7 @@ public class WalletService extends BaseService {
                 if (prev.getStatus() == TransactionStatus.SUCCESS) {
                     return new ApiResponse<>(true,
                             "Already processed (idempotent)",
-                            buildAddMoneyResponse(prev, "SUCCESS"),
+                            buildAddMoneyResponse(prev, SUCCESS, null),
                             200);
                 }
             }
@@ -118,42 +119,46 @@ public class WalletService extends BaseService {
             if (UPI.equals(dto.getPaymentMethod()) && dto.getUpiId() != null) {
                 validateUpiId(dto.getUpiId());
             }
+            WalletTransaction walletTransaction = createWalletTransaction(wallet, TransactionType.CREDIT,
+                    TransactionSource.TOP_UP, amountPaise, dto.getPaymentMethod(), dto.getIdempotencyKey());
+            txRepo.save(walletTransaction);
+            Map<String, Object> phonePeResponse;
+            String merchantOrderId = walletTransaction.getId().toString();
 
-            // 9. ─── PAYMENT GATEWAY INTEGRATION POINT ───────────────────────
-            // In production, call Razorpay / Cashfree / Payu here.
-            // They return a gatewayOrderId + paymentUrl.
-            // We create a PENDING transaction first, then confirm via webhook.
-            //
-            // For this implementation, we simulate a synchronous success
-            // (replace with async gateway callback pattern in production).
-            String gatewayOrderId = "MOCK_GW_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-            // ────────────────────────────────────────────────────────────────
+            PaymentGateway paymentGateway = gatewayFactory.getGateway(dto.getGateway());
+            try {
+                phonePeResponse = paymentGateway.createOrder(
+                        merchantOrderId,
+                        toPaises(dto.getAmountRupees()).toPlainString(),
+                        dto.getIdempotencyKey());
+            } catch (Exception e) {
+                // Mark the pending txn as FAILED so idempotency key can be retried
+                walletTransaction.setStatus(TransactionStatus.FAILED);
+                txRepo.save(walletTransaction);
+                log.error("PhonePe createOrder failed for user {}: {}", getUserId(), e.getMessage(), e);
+                return new ApiResponse<>(false,
+                        "Payment gateway error. Please try again.", null, 502);
+            }
+            // 11. ── STEP C: Persist the PhonePe orderId so webhook can reconcile ──────
+            String phonePeOrderId = String.valueOf(phonePeResponse.get("orderId"));
+            String phonePeToken = String.valueOf(phonePeResponse.get("token"));
+            walletTransaction.setReferenceId(phonePeOrderId);
+            txRepo.save(walletTransaction);
 
-            // 10. Credit wallet
-            wallet.credit(amountPaise);
-            walletRepo.save(wallet);
-
-            // 11. Record transaction
-            WalletTransaction txn = WalletTransaction.builder()
-                    .wallet(wallet)
-                    .userId(getUserId())
-                    .type(TransactionType.CREDIT)
-                    .source(TransactionSource.TOP_UP)
-                    .amountPaise(amountPaise)
-                    .closingBalancePaise(wallet.getBalancePaise())
-                    .referenceId(gatewayOrderId)
-                    .description("Wallet top-up via " + dto.getPaymentMethod())
-                    .idempotencyKey(dto.getIdempotencyKey())
-                    .status(TransactionStatus.SUCCESS)
+            log.info("PhonePe order created: userId={}, amountPaise={}, merchantOrderId={}, phonePeOrderId={}",
+                    getUserId(), amountPaise, merchantOrderId, phonePeOrderId);
+            // 12. Return token + orderId to frontend — frontend launches PhonePe payment
+            // sheet
+            AddMoneyResponseDto responseDto = AddMoneyResponseDto.builder()
+                    .walletTransactionId(walletTransaction.getId())
+                    .gatewayOrderId(phonePeOrderId)
+                    .gatewayPaymentUrl(phonePeToken) // token is used by PhonePe JS/Android SDK
+                    .amountRupees(dto.getAmountRupees())
+                    .status(PENDING)
+                    .message("Payment initiated. Complete payment via PhonePe.")
                     .build();
-            txRepo.save(txn);
 
-            log.info("Wallet top-up success: userId={}, amountPaise={}, txnId={}",
-                    getUserId(), amountPaise, txn.getId());
-
-            return new ApiResponse<>(true, "Money added successfully",
-                    buildAddMoneyResponse(txn, "SUCCESS"), 200);
-
+            return new ApiResponse<>(true, "Payment initiated", responseDto, 200);
         } catch (
 
         IllegalStateException e) {
@@ -163,6 +168,88 @@ public class WalletService extends BaseService {
             log.error("addMoney failed for user {}: {}", getUserId(), e.getMessage(), e);
             return new ApiResponse<>(false, "Payment processing failed. Please try again.", null, 500);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public ApiResponse<Object> getTransactionHistory(int page, int size) {
+        try {
+            // Clamp page size to prevent abuse
+            int safeSize = Math.min(Math.max(size, 1), 50);
+            Pageable pageable = PageRequest.of(Math.max(page, 0), safeSize);
+            Page<WalletTransaction> txPage = txRepo.findByUserIdOrderByCreatedAtDesc(getUserId(), pageable);
+
+            var response = new java.util.HashMap<String, Object>();
+            response.put("transactions", txPage.getContent().stream().map(this::toTxnDto).toList());
+            response.put("totalElements", txPage.getTotalElements());
+            response.put("totalPages", txPage.getTotalPages());
+            response.put("currentPage", txPage.getNumber());
+
+            return new ApiResponse<>(true, "Transaction history fetched", response, 200);
+        } catch (Exception e) {
+            log.error("getTransactionHistory failed for user {}: {}", getUserId(), e.getMessage());
+            return new ApiResponse<>(false, "Failed to fetch history", null, 500);
+        }
+    }
+
+    @Transactional
+    public WalletTransaction debitForOrder(BigDecimal amountPaise,
+            String orderId, String idempotencyKey) {
+        // Idempotency
+        Optional<WalletTransaction> dup = txRepo.findByIdempotencyKey(idempotencyKey);
+        if (dup.isPresent())
+            return dup.get();
+
+        Wallet wallet = walletRepo.findByUserIdForUpdate(getUserId())
+                .orElseThrow(() -> new IllegalStateException("Wallet not found"));
+
+        if (wallet.isFrozen())
+            throw new IllegalStateException("Wallet is frozen");
+
+        wallet.debit(amountPaise); // throws if insufficient
+        walletRepo.save(wallet);
+
+        WalletTransaction txn = WalletTransaction.builder()
+                .wallet(wallet)
+                .userId(getUserId())
+                .type(TransactionType.DEBIT)
+                .source(TransactionSource.ORDER_PAYMENT)
+                .amountPaise(amountPaise)
+                .closingBalancePaise(wallet.getBalancePaise())
+                .referenceId(orderId)
+                .description("Payment for order " + orderId)
+                .idempotencyKey(idempotencyKey)
+                .status(TransactionStatus.SUCCESS)
+                .build();
+        return txRepo.save(txn);
+    }
+
+    @Transactional
+    public WalletTransaction creditRefund(BigDecimal amountPaise,
+            String orderId, String idempotencyKey) {
+        Optional<WalletTransaction> dup = txRepo.findByIdempotencyKey(idempotencyKey);
+        if (dup.isPresent())
+            return dup.get();
+
+        Wallet wallet = walletRepo.findByUserIdForUpdate(getUserId())
+                .orElseGet(() -> createWallet());
+
+        // Refunds bypass the max-balance check (regulatory requirement)
+        wallet.credit(amountPaise);
+        walletRepo.save(wallet);
+
+        WalletTransaction txn = WalletTransaction.builder()
+                .wallet(wallet)
+                .userId(getUserId())
+                .type(TransactionType.CREDIT)
+                .source(TransactionSource.ORDER_REFUND)
+                .amountPaise(amountPaise)
+                .closingBalancePaise(wallet.getBalancePaise())
+                .referenceId(orderId)
+                .description("Refund for order " + orderId)
+                .idempotencyKey(idempotencyKey)
+                .status(TransactionStatus.SUCCESS)
+                .build();
+        return txRepo.save(txn);
     }
 
     public Wallet getOrCreateWallet() {
@@ -195,13 +282,31 @@ public class WalletService extends BaseService {
         }
     }
 
-    private AddMoneyResponseDto buildAddMoneyResponse(WalletTransaction txn, String status) {
+    private AddMoneyResponseDto buildAddMoneyResponse(WalletTransaction txn, String status, String token) {
         return AddMoneyResponseDto.builder()
                 .walletTransactionId(txn.getId())
                 .gatewayOrderId(txn.getReferenceId())
+                .gatewayPaymentUrl(token)
                 .amountRupees(toRupees(txn.getAmountPaise()))
                 .status(status)
                 .message("₹" + toRupees(txn.getAmountPaise()) + " added to your wallet")
                 .build();
+    }
+
+    private WalletTransaction createWalletTransaction(Wallet wallet, TransactionType creditType,
+            TransactionSource transactionSource, BigDecimal amountPaise, String paymentMethod, String idempotetentKey) {
+        WalletTransaction pendingTxn = WalletTransaction.builder()
+                .wallet(wallet)
+                .userId(getUserId())
+                .type(creditType)
+                .source(transactionSource)
+                .amountPaise(amountPaise)
+                .closingBalancePaise(wallet.getBalancePaise()) // snapshot before credit
+                .description("Wallet top-up via " + paymentMethod)
+                .idempotencyKey(idempotetentKey)
+                .status(TransactionStatus.PENDING)
+                // referenceId will be set to PhonePe orderId after SDK call
+                .build();
+        return pendingTxn;
     }
 }

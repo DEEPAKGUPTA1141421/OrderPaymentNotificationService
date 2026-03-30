@@ -41,6 +41,14 @@ public class WalletController {
         return ResponseEntity.status(response.statusCode()).body(response);
     }
 
+    @GetMapping("/transactions")
+    public ResponseEntity<ApiResponse<Object>> getTransactions(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size) {
+        ApiResponse<Object> response = walletService.getTransactionHistory(page, size);
+        return ResponseEntity.status(response.statusCode()).body(response);
+    }
+
     @PostMapping("/add-money")
     public ResponseEntity<ApiResponse<Object>> addMoney(
             @Valid @RequestBody AddMoneyRequestDto dto) {
@@ -48,3 +56,4 @@ public class WalletController {
         return ResponseEntity.status(response.statusCode()).body(response);
     }
 }
+// jouiimuiou8oi jikij
