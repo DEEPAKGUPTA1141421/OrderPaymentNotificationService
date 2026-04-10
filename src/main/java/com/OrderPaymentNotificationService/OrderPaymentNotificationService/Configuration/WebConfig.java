@@ -22,80 +22,76 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class WebConfig {
 
-    private final JwtService jwtService;
+        private final JwtService jwtService;
 
-    // ✅ CORS Configuration (IMPORTANT)
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
+        // ✅ CORS Configuration (IMPORTANT)
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration config = new CorsConfiguration();
 
-        // 🔥 Allow your frontend origins (update if needed)
-        config.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:8000",
-                "http://localhost:8080",
-                "http://192.168.1.104:8080",
-                "http://localhost:5173",
-                "http://10.0.2.2:3000",
-                "http://127.0.0.1:8080"));
+                // 🔥 Allow your frontend origins (update if needed)
+                config.setAllowedOriginPatterns(List.of("*"));
+                config.setAllowedMethods(List.of("*"));
+                config.setAllowedHeaders(List.of("*"));
+                config.setAllowCredentials(true);
 
-        // Allow all standard HTTP methods
-        config.setAllowedMethods(List.of(
-                "GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                // Allow all standard HTTP methods
+                config.setAllowedMethods(List.of(
+                                "GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        // Allow headers
-        config.setAllowedHeaders(List.of(
-                "Authorization",
-                "Content-Type",
-                "X-Requested-With",
-                "Accept"));
+                // Allow headers
+                config.setAllowedHeaders(List.of(
+                                "Authorization",
+                                "Content-Type",
+                                "X-Requested-With",
+                                "Accept"));
 
-        // If using JWT (Authorization header)
-        config.setAllowCredentials(false);
+                // If using JWT (Authorization header)
+                config.setAllowCredentials(false);
 
-        // Cache preflight response (optional)
-        config.setMaxAge(3600L);
+                // Cache preflight response (optional)
+                config.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", config);
 
-        return source;
-    }
+                return source;
+        }
 
-    // ✅ Security Configuration
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        // ✅ Security Configuration
+        @Bean
+        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-        JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService);
+                JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(jwtService);
 
-        http
-                .cors(cors -> {
-                }) // ✅ MUST ENABLE CORS HERE
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                http
+                                .cors(cors -> {
+                                }) // ✅ MUST ENABLE CORS HERE
+                                .csrf(csrf -> csrf.disable())
+                                .sessionManagement(session -> session
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                .authorizeHttpRequests(auth -> auth
+                                .authorizeHttpRequests(auth -> auth
 
-                        // ✅ Allow preflight requests
-                        .requestMatchers("/", "/api/v1/users/wallet/**",
-                                "/api/v1/users/payment-methods/**",
-                                "/api/v1/users/loyalty-points/**")
-                        .hasRole("USER")
+                                                // ✅ Allow preflight requests
+                                                .requestMatchers("/", "/api/v1/users/wallet/**",
+                                                                "/api/v1/users/payment-methods/**",
+                                                                "/api/v1/users/loyalty-points/**")
+                                                .hasRole("USER")
 
-                        // ✅ Public APIs
-                        .requestMatchers("/apisss/v1/*")
-                        .permitAll()
+                                                // ✅ Public APIs
+                                                .requestMatchers("/apisss/v1/*")
+                                                .permitAll()
 
-                        // 🔒 Secure everything else
-                        .anyRequest().authenticated())
+                                                // 🔒 Secure everything else
+                                                .anyRequest().authenticated())
 
-                // ✅ JWT Filter
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                                // ✅ JWT Filter
+                                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+                return http.build();
+        }
 }
 // juoiiojnji jioji mmjio uiouoinjjjknjknjnjnjkjjnkjnk
 // mlkklijkjiljijijijnnjjijihuhuhuhhuhuhugihhuihuikuhuigyjjijinjkj
-// hujijhjjujijkj
+// hujijhjjujijkjjijoiiouu8oi khuuk
