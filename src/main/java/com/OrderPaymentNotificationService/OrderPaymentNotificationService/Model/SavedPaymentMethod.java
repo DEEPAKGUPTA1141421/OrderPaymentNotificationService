@@ -7,9 +7,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import com.twilio.twiml.voice.Prompt.CardType;
 
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.UUID;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 
 @Entity
 @Table(name = "saved_payment_methods", indexes = {
@@ -89,11 +89,11 @@ public class SavedPaymentMethod {
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private ZonedDateTime createdAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+    private ZonedDateTime createdAt = DateTimeUtil.nowIst();
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private ZonedDateTime updatedAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+    private ZonedDateTime updatedAt = DateTimeUtil.nowIst();
 
     // ── Enums ────────────────────────────────────────────────────────────────
 

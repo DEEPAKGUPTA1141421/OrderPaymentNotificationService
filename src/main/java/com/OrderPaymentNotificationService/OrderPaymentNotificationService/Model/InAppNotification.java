@@ -4,9 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.UUID;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 
 /**
  * Persists in-app notifications for the user's notification feed.
@@ -95,5 +95,5 @@ public class InAppNotification {
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private ZonedDateTime createdAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+    private ZonedDateTime createdAt = DateTimeUtil.nowIst();
 }

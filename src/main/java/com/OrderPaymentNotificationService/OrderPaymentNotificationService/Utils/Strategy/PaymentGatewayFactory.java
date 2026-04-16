@@ -18,7 +18,7 @@ public class PaymentGatewayFactory {
     public PaymentGateway getGateway(String type) {
         String key = switch (type.toLowerCase()) {
             case "phonepe" -> "phonepeGateway";
-            // Add more cases later
+            case "cod"     -> "codGateway";
             default -> throw new IllegalArgumentException("Unsupported payment gateway: " + type);
         };
         return gateways.get(key);

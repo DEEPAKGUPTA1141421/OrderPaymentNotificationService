@@ -25,8 +25,8 @@ import static com.OrderPaymentNotificationService.OrderPaymentNotificationServic
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -144,7 +144,7 @@ public class LoyaltyService extends BaseService {
             }
 
             // 2. Daily cap check
-            ZonedDateTime since = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).withHour(0).withMinute(0).withSecond(0);
+            ZonedDateTime since = DateTimeUtil.startOfTodayIst();
             Long dailyRedeemed = txRepo.sumRedeemedSince(getUserId(), since);
             if (dailyRedeemed == null)
                 dailyRedeemed = 0L;
@@ -264,7 +264,7 @@ public class LoyaltyService extends BaseService {
                 .closingBalance(account.getPointsBalance())
                 .referenceId(orderId)
                 .description("Earned " + pts + " points on order " + orderId)
-                .expiresAt(ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).plusDays(POINTS_EXPIRY_DAYS))
+                .expiresAt(DateTimeUtil.plusDaysIst(POINTS_EXPIRY_DAYS))
                 .build();
         return txRepo.save(txn);
     }
@@ -293,7 +293,7 @@ public class LoyaltyService extends BaseService {
                 .points(bonus)
                 .closingBalance(account.getPointsBalance())
                 .description("Welcome bonus: " + bonus + " points")
-                .expiresAt(ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).plusDays(POINTS_EXPIRY_DAYS))
+                .expiresAt(DateTimeUtil.plusDaysIst(POINTS_EXPIRY_DAYS))
                 .build();
         txRepo.save(txn);
         log.info("Welcome bonus {} pts granted to user {}", bonus, getUserId());

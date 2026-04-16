@@ -3,9 +3,9 @@ package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Mode
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.UUID;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -59,11 +59,11 @@ public class LoyaltyTransaction {
     // inside LoyaltyTransaction class:
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private ZonedDateTime createdAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+    private ZonedDateTime createdAt = DateTimeUtil.nowIst();
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private ZonedDateTime updatedAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+    private ZonedDateTime updatedAt = DateTimeUtil.nowIst();
 
     public enum TxType {
         EARN, REDEEM, EXPIRE, REVERSE

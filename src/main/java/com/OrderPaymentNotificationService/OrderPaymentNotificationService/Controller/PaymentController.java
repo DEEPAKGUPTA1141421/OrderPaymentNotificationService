@@ -4,53 +4,42 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.ApiResponse;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.CodConfirmRequest;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.CodOtpRequest;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.CodQrRequest;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.CreateOrderDto;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.CodPaymentService;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.QrPaymentService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.RedisLockService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.Strategy.PaymentGateway;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.Strategy.PaymentGatewayFactory;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.filter.UserPrincipal;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/v1/payment")
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentController {
 
     private final PaymentGatewayFactory gatewayFactory;
     private final RedisLockService redisLockService;
+    private final CodPaymentService codPaymentService;
+    private final QrPaymentService qrPaymentService;
 
     @PostMapping
     public ResponseEntity<?> createOrder(@Valid @RequestBody CreateOrderDto dto) {
-        System.out.println("gateway" + dto.gateway());
+        log.info("Creating order for gateway: {}", dto.gateway());
         PaymentGateway paymentGateway = gatewayFactory.getGateway(dto.gateway());
-
-        String lockKey = "lock:payment:" + dto.bookingId();
-        try {
-            // ✅ Prevent duplicate payment requests
-            // if (!redisLockService.acquireLock(lockKey, dto.userId(), dto.bookingId(), 1,
-            // 2)) {
-            // return ResponseEntity.status(409).body("Payment already in progress for this
-            // booking.");
-            // }
-
-            // ✅ Idempotency check
-            // if (redisLockService.isLocked("idempotent:", dto.bookingId(),
-            // UUID.fromString(lockKey)dto.idempotencyKey())) {
-            // return ResponseEntity.ok(Map.of("status", "IGNORED", "reason", "Idempotent
-            // request"));
-            // }
-
-            redisLockService.acquireLock("idempotent:", dto.userId(), dto.bookingId(), 1, 5);
-
-            ApiResponse<Object> response = paymentGateway.createOrder(dto);
-            return ResponseEntity.ok(response);
-        } finally {
-            redisLockService.releaseLock("lock:payment:", dto.userId(), dto.bookingId());
-        }
+        ApiResponse<Object> response = paymentGateway.createOrder(dto);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/validate-payment")
@@ -82,6 +71,109 @@ public class PaymentController {
         } finally {
             redisLockService.releaseLock("lock:refund:", userId, UUID.randomUUID());
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // COD – Generate OTP (ROLE_USER)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * The customer generates a 6-digit OTP just before the delivery partner
+     * arrives. The OTP is shown in the app and verbally given to the partner
+     * who then calls /cod/confirm to finalise payment.
+     *
+     * Security: requires ROLE_USER JWT. The service verifies that the
+     * transaction belongs to the authenticated user.
+     */
+    @PostMapping("/cod/generate-otp")
+    public ResponseEntity<?> generateCodOtp(
+            @Valid @RequestBody CodOtpRequest request,
+            Authentication authentication) {
+
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        String otp = codPaymentService.generateOtp(request.transactionId(), principal.getId());
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "OTP generated successfully",
+                Map.of(
+                        "otp", otp,
+                        "expiresInMinutes", 10,
+                        "transactionId", request.transactionId(),
+                        "message", "Show this OTP to your delivery partner to confirm cash payment."),
+                200));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // COD – Confirm payment received (ROLE_DELIVERY)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Called by the delivery partner after collecting cash.
+     * Validates the OTP provided by the customer and the collected amount,
+     * then marks the COD transaction as SUCCESS.
+     *
+     * Security: requires ROLE_DELIVERY JWT. Idempotent – safe to retry if
+     * the response is lost in transit.
+     */
+    @PostMapping("/cod/confirm")
+    public ResponseEntity<?> confirmCodPayment(
+            @Valid @RequestBody CodConfirmRequest request,
+            Authentication authentication) {
+
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        codPaymentService.confirmPayment(request, principal.getId());
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "Cash payment confirmed successfully.",
+                Map.of(
+                        "transactionId", request.transactionId(),
+                        "status", "SUCCESS",
+                        "paymentMode", "CASH_ON_DELIVERY"),
+                200));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // COD – Generate payment QR (ROLE_DELIVERY)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Delivery partner calls this when the customer wants to pay digitally.
+     * Returns a base64 QR image of a PhonePe checkout page.
+     * Customer scans → pays with any UPI app → money goes to company account →
+     * PhonePe webhook auto-confirms the transaction.
+     *
+     * Money flow: Customer ──UPI──► PhonePe ──► Company merchant account
+     * Webhook fires ──► transaction marked SUCCESS ──► rider notified
+     */
+    @PostMapping("/cod/generate-payment-qr")
+    public ResponseEntity<?> generateCodPaymentQr(
+            @Valid @RequestBody CodQrRequest request,
+            Authentication authentication) {
+
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        Map<String, Object> result = qrPaymentService.generatePaymentQr(
+                request.transactionId(), principal.getId());
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "Payment QR generated.", result, 200));
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // COD – Poll QR payment status (ROLE_DELIVERY)
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Rider's app polls this after showing the QR to know when payment is received.
+     * Recommended polling interval: every 3 seconds, timeout after 10 minutes.
+     * When "paid": true, show "Payment Received" screen to the rider.
+     */
+    @GetMapping("/cod/qr-status/{transactionId}")
+    public ResponseEntity<?> getCodQrStatus(
+            @PathVariable UUID transactionId,
+            Authentication authentication) {
+
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        Map<String, Object> status = qrPaymentService.getQrPaymentStatus(
+                transactionId, principal.getId());
+
+        return ResponseEntity.ok(new ApiResponse<>(true, "Payment status fetched.", status, 200));
     }
 
     // ✅ Webhook with Lock
@@ -120,9 +212,4 @@ public class PaymentController {
         }
     }
 }
-
-// huhuijjkhujijkmkjhio iuuiihhb huhuhuuhjnj
-// gyyhiuhj hiyuio huiuuuijuhhuuiujjki
-// huikj uuoi uoijl iuuio uioio uoio rtyg
-// hukui ijlio oi9o oiio ioio ioio ipop
-// ygiuhuiu u8oiloi iloioio uiuil ijijijhukhu
+// jo899

@@ -79,6 +79,28 @@ public class WebConfig {
                                                                 "/api/v1/users/loyalty-points/**")
                                                 .hasRole("USER")
 
+                                                // ─── Booking: checkout + order history ───────────────
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/booking/**")
+                                                .hasRole("USER")
+
+                                                // ─── Receipt download ──────────────────────────────
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/receipt/**")
+                                                .hasRole("USER")
+
+                                                // ─── COD: OTP generation (customer only) ───
+                                                .requestMatchers("/api/v1/payment/cod/generate-otp")
+                                                .hasRole("USER")
+
+                                                // ─── COD: Payment confirmation (delivery partner only) ───
+                                                .requestMatchers("/api/v1/payment/cod/confirm")
+                                                .hasRole("DELIVERY")
+
+                                                // ─── COD: QR generation + status poll (delivery partner only) ───
+                                                .requestMatchers("/api/v1/payment/cod/generate-payment-qr")
+                                                .hasRole("DELIVERY")
+                                                .requestMatchers("/api/v1/payment/cod/qr-status/**")
+                                                .hasRole("DELIVERY")
+
                                                 // ✅ Public APIs
                                                 .requestMatchers("/apisss/v1/*")
                                                 .permitAll()

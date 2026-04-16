@@ -17,6 +17,7 @@ import static com.OrderPaymentNotificationService.OrderPaymentNotificationServic
 
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.UUID;
@@ -206,7 +207,7 @@ public class SavedPaymentMethodService extends BaseService {
     private void validateCardExpiry(String expiry) {
         // Format MM/YYYY
         try {
-            DateTimeFormatter fmt = DateTimeFormatter.ofPattern("MM/yyyy");
+            DateTimeFormatter fmt = DateTimeUtil.CARD_EXPIRY_FMT;
             YearMonth expiryYM = YearMonth.parse(expiry, fmt);
             if (expiryYM.isBefore(YearMonth.now())) {
                 throw new IllegalArgumentException("Card is expired");

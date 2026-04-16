@@ -6,8 +6,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 import java.util.UUID;
 
 @Entity
@@ -38,11 +38,11 @@ public class Wallet {
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private ZonedDateTime createdAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+    private ZonedDateTime createdAt = DateTimeUtil.nowIst();
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private ZonedDateTime updatedAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+    private ZonedDateTime updatedAt = DateTimeUtil.nowIst();
 
     @Transient
     public BigDecimal getBalanceInRupees() {

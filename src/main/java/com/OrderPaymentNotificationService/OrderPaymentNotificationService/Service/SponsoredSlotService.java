@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.SponsoredSlot;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.SponsoredSlotRepository;
 
-import java.time.LocalDateTime;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,14 +43,14 @@ public class SponsoredSlotService {
 
     // Get all active slots (not expired)
     public List<SponsoredSlot> getAllActiveSlots() {
-        return repository.findByActiveTrueAndEndDateAfter(LocalDateTime.now());
+        return repository.findByActiveTrueAndEndDateAfter(DateTimeUtil.localNowIst());
     }
 
     // Book a slot by seller/shop
     public SponsoredSlot bookSlot(UUID slotId, String shopId, String entityName, UUID productId, String brandId) {
         SponsoredSlot slot = repository.findById(slotId).orElseThrow();
 
-        if (!slot.isActive() || slot.getEndDate() != null && slot.getEndDate().isAfter(LocalDateTime.now())) {
+        if (!slot.isActive() || slot.getEndDate() != null && slot.getEndDate().isAfter(DateTimeUtil.localNowIst())) {
             throw new RuntimeException("Slot already booked or unavailable");
         }
 
@@ -58,8 +58,8 @@ public class SponsoredSlotService {
         slot.setBookedEntityName(entityName);
         slot.setProductId(productId);
         slot.setBrandId(brandId);
-        slot.setStartDate(LocalDateTime.now());
-        slot.setEndDate(LocalDateTime.now().plusDays(7)); // Fixed 7 days
+        slot.setStartDate(DateTimeUtil.localNowIst());
+        slot.setEndDate(DateTimeUtil.localNowIst().plusDays(7)); // Fixed 7 days
         slot.setActive(false); // Not available anymore
 
         return repository.save(slot);

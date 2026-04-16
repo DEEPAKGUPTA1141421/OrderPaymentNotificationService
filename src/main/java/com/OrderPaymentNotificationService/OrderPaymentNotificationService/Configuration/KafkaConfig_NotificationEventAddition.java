@@ -40,11 +40,14 @@ public class KafkaConfig_NotificationEventAddition {
      * Uses a dedicated group-id so it doesn't interfere with the existing
      * NotificationRequest consumer.
      */
+    @Value("${spring.kafka.bootstrap-servers}")
+    private String bootstrapServers;
+
     @Bean
     public ConsumerFactory<String, NotificationEvent> notificationEventConsumerFactory() {
         Map<String, Object> props = new HashMap<>();
 
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "13.210.73.205:9092");
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "notification-service-group");
 
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
@@ -75,3 +78,4 @@ public class KafkaConfig_NotificationEventAddition {
         return factory;
     }
 }
+// iuo8uo iuu8ikhuuhuuih

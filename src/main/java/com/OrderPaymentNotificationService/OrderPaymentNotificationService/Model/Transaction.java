@@ -1,7 +1,7 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model;
 
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -42,14 +42,14 @@ public class Transaction {
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
-    private ZonedDateTime createdAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+    private ZonedDateTime createdAt = DateTimeUtil.nowIst();
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private ZonedDateTime updatedAt = ZonedDateTime.now(ZoneId.of("Asia/Kolkata"));
+    private ZonedDateTime updatedAt = DateTimeUtil.nowIst();
 
     public enum Method {
-        POINTS, GATEWAY
+        POINTS, GATEWAY, COD
     }
 
     public enum Status {

@@ -15,8 +15,8 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.NotificationPreference.NotificationChannel;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.InAppNotificationRepository;
 
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 import java.util.*;
 
 @Service
@@ -92,7 +92,7 @@ public class InAppNotificationService extends BaseService {
             }
 
             notif.setRead(true);
-            notif.setReadAt(ZonedDateTime.now(ZoneId.of("Asia/Kolkata")));
+            notif.setReadAt(DateTimeUtil.nowIst());
             notifRepo.save(notif);
 
             return new ApiResponse<>(true, "Notification marked as read", toDto(notif), 200);

@@ -24,8 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 import static com.OrderPaymentNotificationService.OrderPaymentNotificationService.constant.WalletAndLoyalityPointsConstant.*;
 
 import java.math.BigDecimal;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -99,7 +99,7 @@ public class WalletService extends BaseService {
             }
 
             // 6. Daily top-up limit (rolling 24-hour window)
-            ZonedDateTime since = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).minusHours(24);
+            ZonedDateTime since = DateTimeUtil.hoursAgoIst(24);
             Long dailyTopUpPaise = txRepo.sumTopUpAmountSince(getUserId(), since);
             if (dailyTopUpPaise == null)
                 dailyTopUpPaise = 0L;
