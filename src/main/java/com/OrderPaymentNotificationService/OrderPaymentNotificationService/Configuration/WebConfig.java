@@ -101,6 +101,10 @@ public class WebConfig {
                                                 .requestMatchers("/api/v1/payment/cod/qr-status/**")
                                                 .hasRole("DELIVERY")
 
+                                                                // ✅ SendBird webhooks — verified by HMAC signature, not JWT
+                                                .requestMatchers("/webhooks/sendbird/**")
+                                                .permitAll()
+
                                                 // ✅ Public APIs
                                                 .requestMatchers("/apisss/v1/*")
                                                 .permitAll()
