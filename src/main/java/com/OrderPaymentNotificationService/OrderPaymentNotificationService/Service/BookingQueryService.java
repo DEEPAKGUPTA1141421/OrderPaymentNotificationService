@@ -133,6 +133,7 @@ public class BookingQueryService extends BaseService {
                 item.getId(),
                 item.getProductId(),
                 item.getVariantId(),
+                item.getProductName(),
                 item.getQuantity(),
                 item.getPrice(),
                 toRupeesStr(item.getPrice()),

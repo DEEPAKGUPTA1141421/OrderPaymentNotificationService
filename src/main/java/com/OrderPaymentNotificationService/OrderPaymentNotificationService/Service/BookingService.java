@@ -218,6 +218,7 @@ public class BookingService extends BaseService {
         bi.setVariantId(ci.getVariantId());
         bi.setQuantity(ci.getQuantity());
         bi.setPrice(toPaise(BigDecimal.valueOf(ci.getPrice())));
+        bi.setProductName(ci.getName());
         return bi;
     }
 

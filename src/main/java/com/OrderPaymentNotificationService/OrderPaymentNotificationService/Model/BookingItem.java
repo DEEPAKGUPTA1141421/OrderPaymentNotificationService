@@ -32,4 +32,7 @@ public class BookingItem {
 
     @Column(nullable = false)
     private String price; // unit price in paise
+
+    @Column(nullable = true)
+    private String productName; // snapshot at checkout time
 }
