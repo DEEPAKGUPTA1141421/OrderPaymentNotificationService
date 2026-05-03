@@ -1,0 +1,25 @@
+flowchart TD
+    Root[com.OrderPaymentNotificationService.OrderPaymentNotificationService]
+    Root --> Controller
+    Root --> Service
+    Root --> Repository
+    Root --> Model
+    Root --> DTO
+    Root --> Configuration
+    Root --> Utils
+    Root --> filter
+    Root --> constant
+
+    Service --> ServiceChat[Service.chat]
+    Service --> ServiceRanking[Service.ranking]
+    DTO --> DTOChat[DTO.chat]
+    DTO --> DTONotification[DTO.NotificationDto]
+    DTO --> DTOOrder[DTO.OrderDto]
+    DTO --> DTOReceipt[DTO.receipt]
+    DTO --> DTODelivery[DTO.delivery]
+    DTO --> DTONetwork[DTO.network]
+    DTO --> DTORanking[DTO.ranking]
+    DTO --> DTOWallet[DTO.WalletLoyaltyDto]
+    DTO --> DTOBuyNow[DTO.BuyNow]
+    Utils --> Strategy[Utils.Strategy]
+    Utils --> Network[Utils.network]
