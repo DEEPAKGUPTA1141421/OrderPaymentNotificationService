@@ -23,6 +23,12 @@ public class ChatChannelService {
     @Value("${sendbird.channel.archive-delay-days:7}")
     private int archiveDelayDays;
 
+    @Value("${sendbird.support-agent-id:support_agent_001}")
+    private String supportAgentId;
+
+    @Value("${sendbird.support-agent-nickname:Support Team}")
+    private String supportAgentNickname;
+
     public void createCustomerSellerChannel(UUID orderId, UUID customerId, UUID sellerId) {
         String refId = orderId.toString();
         Optional<ChatChannelMapping> existing = channelMappingRepository
@@ -80,22 +86,24 @@ public class ChatChannelService {
     }
 
     public String createSupportChannel(String ticketId, UUID customerId, UUID agentId) {
+        // Idempotent: return existing channel if ticket already has one
+        Optional<ChatChannelMapping> existing = channelMappingRepository
+            .findByReferenceIdAndReferenceType(ticketId, ChatChannelMapping.ReferenceType.SUPPORT);
+        if (existing.isPresent()) {
+            log.info("[ChatChannelService] Support channel already exists for ticket {}", ticketId);
+            return existing.get().getChannelUrl();
+        }
+
         String sbCustomerId = toSbUserId(customerId);
         sendBirdClient.upsertUser(sbCustomerId, sbCustomerId);
 
-        List<String> participants;
-        String participantIds;
-        if (agentId != null) {
-            String sbAgentId = toSbUserId(agentId);
-            sendBirdClient.upsertUser(sbAgentId, sbAgentId);
-            participants  = List.of(sbCustomerId, sbAgentId);
-            participantIds = sbCustomerId + "," + sbAgentId;
-        } else {
-            participants  = List.of(sbCustomerId);
-            participantIds = sbCustomerId;
-        }
+        // Always upsert the dedicated support agent and include them in the channel
+        sendBirdClient.upsertUser(supportAgentId, supportAgentNickname);
 
-        String channelName = "support_" + ticketId + "_customer_agent";
+        List<String> participants = List.of(sbCustomerId, supportAgentId);
+        String participantIds    = sbCustomerId + "," + supportAgentId;
+
+        String channelName = "support_" + ticketId;
         String channelUrl  = sendBirdClient.createGroupChannel(channelName, participants);
 
         channelMappingRepository.save(ChatChannelMapping.builder()
@@ -105,6 +113,17 @@ public class ChatChannelService {
             .channelName(channelName)
             .participantIds(participantIds)
             .build());
+
+        // Send instant automated welcome message so the customer knows someone is there
+        try {
+            sendBirdClient.sendMessage(channelUrl, supportAgentId,
+                "👋 Hi! Thanks for reaching out to Support Team.\n" +
+                "We've received your request and an agent will respond shortly.\n" +
+                "Please describe your issue in detail below.");
+        } catch (Exception e) {
+            // Welcome message failure is non-fatal — channel is still usable
+            log.warn("[ChatChannelService] Failed to send welcome message for ticket {}: {}", ticketId, e.getMessage());
+        }
 
         log.info("[ChatChannelService] Created support channel for ticket {}: {}", ticketId, channelUrl);
         return channelUrl;
