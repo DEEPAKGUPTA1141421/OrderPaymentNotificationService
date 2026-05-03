@@ -4,7 +4,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -31,7 +33,13 @@ public class SendBirdClient {
     }
 
     private String baseUrl() {
-        return "https://api-" + applicationId + ".sendbird.com/v3";
+        return "https://api-" + applicationId.toLowerCase() + ".sendbird.com/v3";
+    }
+
+    private <T> HttpEntity<T> jsonEntity(T body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return new HttpEntity<>(body, headers);
     }
 
     public void upsertUser(String userId, String nickname) {
@@ -42,7 +50,7 @@ public class SendBirdClient {
         body.put("profile_url", "");
         body.put("upsert", true);
         try {
-            restTemplate.postForObject(url, body, Map.class);
+            restTemplate.postForObject(url, jsonEntity(body), Map.class);
             log.info("[SendBirdClient] Upserted user: {}", userId);
         } catch (HttpClientErrorException e) {
             log.error("[SendBirdClient] Upsert failed for {}: {} {}", userId, e.getStatusCode(), e.getResponseBodyAsString());
@@ -56,7 +64,7 @@ public class SendBirdClient {
         Map<String, Object> body = Map.of("expires_at", expiresAt);
         try {
             @SuppressWarnings("unchecked")
-            Map<String, Object> response = restTemplate.postForObject(url, body, Map.class);
+            Map<String, Object> response = restTemplate.postForObject(url, jsonEntity(body), Map.class);
             if (response == null || !response.containsKey("token")) {
                 throw new RuntimeException("No token in SendBird response for user " + userId);
             }
@@ -77,7 +85,7 @@ public class SendBirdClient {
         body.put("is_public", false);
         try {
             @SuppressWarnings("unchecked")
-            Map<String, Object> response = restTemplate.postForObject(url, body, Map.class);
+            Map<String, Object> response = restTemplate.postForObject(url, jsonEntity(body), Map.class);
             if (response == null || !response.containsKey("channel_url")) {
                 throw new RuntimeException("No channel_url in SendBird response for channel: " + channelName);
             }
@@ -111,6 +119,26 @@ public class SendBirdClient {
         } catch (HttpClientErrorException e) {
             log.error("[SendBirdClient] Freeze failed for {}: {} {}", channelUrl, e.getStatusCode(), e.getResponseBodyAsString());
             throw new RuntimeException("SendBird channel freeze failed: " + channelUrl, e);
+        }
+    }
+
+    /**
+     * Sends a user message into a channel on behalf of senderId.
+     * Used for automated support welcome messages and agent replies.
+     */
+    public void sendMessage(String channelUrl, String senderId, String message) {
+        String url = baseUrl() + "/group_channels/" + channelUrl + "/messages";
+        Map<String, Object> body = new HashMap<>();
+        body.put("message_type", "MESG");
+        body.put("user_id", senderId);
+        body.put("message", message);
+        try {
+            restTemplate.postForObject(url, jsonEntity(body), Map.class);
+            log.info("[SendBirdClient] Sent message to channel {} as {}", channelUrl, senderId);
+        } catch (HttpClientErrorException e) {
+            log.error("[SendBirdClient] sendMessage failed for channel {}: {} {}",
+                channelUrl, e.getStatusCode(), e.getResponseBodyAsString());
+            throw new RuntimeException("SendBird sendMessage failed for channel: " + channelUrl, e);
         }
     }
 }
