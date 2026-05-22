@@ -1,5 +1,6 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service;
 
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.delivery.BookingConfirmedEvent;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.receipt.ReceiptEvent;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Booking;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Payment;
@@ -36,6 +37,7 @@ public class ReceiptProducerService {
     private final ObjectMapper                  objectMapper;
     private final BookingRepository             bookingRepository;
     private final PaymentRepository             paymentRepository;
+    private final BookingConfirmedProducer      bookingConfirmedProducer;
 
     // ══════════════════════════════════════════════════════════════════════════
     //  Public API — called by gateways
@@ -50,6 +52,8 @@ public class ReceiptProducerService {
         }
 
         Payment payment = paymentRepository.findFirstByBookingId(bookingId).orElse(null);
+
+        bookingConfirmedProducer.publish(booking);
 
         ReceiptEvent event = buildEvent(booking, payment);
         sendEvent(event);

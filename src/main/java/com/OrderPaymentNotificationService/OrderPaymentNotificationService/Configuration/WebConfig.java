@@ -79,6 +79,10 @@ public class WebConfig {
                                                                 "/api/v1/users/loyalty-points/**")
                                                 .hasRole("USER")
 
+                                                // ─── Buy Now: direct single-product purchase ─────────
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/buy-now")
+                                                .hasRole("USER")
+
                                                 // ─── Booking: checkout + order history ───────────────
                                                 .requestMatchers(HttpMethod.GET, "/api/v1/booking/**")
                                                 .hasRole("USER")

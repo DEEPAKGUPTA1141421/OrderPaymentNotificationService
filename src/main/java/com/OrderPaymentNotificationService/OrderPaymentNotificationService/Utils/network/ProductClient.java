@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.ApiResponse;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.network.AddressDto;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.network.CartResponseDto;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.network.ProductDetailDto;
 
 @FeignClient(name = "productclient", url = "${feign.client.productclient.url}")
 public interface ProductClient {
@@ -24,6 +26,35 @@ public interface ProductClient {
     @GetMapping("/internal/v1/cart/{userId}")
     ApiResponse<CartResponseDto> getCartInternal(
             @PathVariable("userId") UUID userId,
+            @RequestHeader("X-Internal-Api-Key") String internalApiKey
+    );
+
+    /**
+     * Internal service-to-service call to fetch a single product + variant detail.
+     * Used by the Buy Now flow to bypass the cart entirely.
+     *
+     * Endpoint in product service:
+     *   GET /internal/v1/product/{productId}/variant/{variantId}
+     *   Filter: InternalApiKeyFilter validates X-Internal-Api-Key header.
+     *
+     * Response fields used:
+     *   shopId, name, price (rupees), gstRate (%), deliveryCharge (rupees),
+     *   stockAvailable, available
+     */
+    @GetMapping("/internal/v1/product/{productId}/variant/{variantId}")
+    ApiResponse<ProductDetailDto> getProductDetailInternal(
+            @PathVariable("productId")  UUID productId,
+            @PathVariable("variantId")  UUID variantId,
+            @RequestHeader("X-Internal-Api-Key") String internalApiKey
+    );
+
+    /**
+     * Resolves a saved address UUID to lat/lng + text.
+     * Endpoint: GET /internal/v1/address/{addressId}
+     */
+    @GetMapping("/internal/v1/address/{addressId}")
+    ApiResponse<AddressDto> getAddressInternal(
+            @PathVariable("addressId") UUID addressId,
             @RequestHeader("X-Internal-Api-Key") String internalApiKey
     );
 }

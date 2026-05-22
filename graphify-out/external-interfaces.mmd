@@ -1,0 +1,10 @@
+flowchart LR
+    ProductClient --> ProductService["Product service\n/internal/v1/cart/{userId}\n/internal/v1/product/{productId}/variant/{variantId}"]
+    PhonePeService --> PhonePeGateway[PhonePe SDK / Gateway]
+    SendBirdClient --> SendBirdRest["SendBird REST API"]
+    FcmPushNotificationService --> FirebaseFCM[Firebase Cloud Messaging]
+    EmailNotificationService --> SendGridAPI[SendGrid API]
+    SmsNotificationService --> TwilioAPI[Twilio API]
+    KafkaProducerService --> KafkaNotification[notification topic]
+    ReceiptProducerService --> KafkaReceipt[receipt events]
+    BookingConfirmedProducer --> KafkaDelivery[booking confirmed events]

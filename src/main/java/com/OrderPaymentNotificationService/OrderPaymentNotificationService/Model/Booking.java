@@ -28,8 +28,21 @@ public class Booking {
     @Column(nullable = false)
     private UUID deliveryAddress;
 
-    @Enumerated(EnumType.STRING)
-    private Status status = Status.INITIATED; // PENDING, CONFIRMED, CANCELLED, FAILED
+    // Resolved coordinates for the delivery address (customer/destination)
+    @Column(name = "delivery_lat")
+    private Double deliveryLat;
+
+    @Column(name = "delivery_lng")
+    private Double deliveryLng;
+
+    @Column(name = "delivery_address_text")
+    private String deliveryAddressText;
+
+    @Column(name = "delivery_city")
+    private String deliveryCity;
+
+    @Convert(converter = Booking.StatusConverter.class)
+    private Status status = Status.INITIATED;
 
     @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<BookingItem> items = new ArrayList<>();
@@ -82,6 +95,20 @@ public class Booking {
                 throw new IllegalStateException(
                         "Invalid order status transition: " + this.name() + " → " + next.name());
             }
+        }
+    }
+
+    @Converter
+    public static class StatusConverter implements AttributeConverter<Status, String> {
+        @Override
+        public String convertToDatabaseColumn(Status status) {
+            return status == null ? null : status.name();
+        }
+
+        @Override
+        public Status convertToEntityAttribute(String value) {
+            if (value == null) return null;
+            return Status.valueOf(value.toUpperCase());
         }
     }
 

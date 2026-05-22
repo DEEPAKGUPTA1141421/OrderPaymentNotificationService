@@ -1,0 +1,29 @@
+flowchart TD
+    AuthUser[Authenticated UserPrincipal]
+    ChatController["ChatController /api/chat"]
+    TokenEndpoint["POST /api/chat/token"]
+    SupportEndpoint["POST /api/chat/support/ticket"]
+    ChatTokenService
+    ChatChannelService
+    SendBirdClient
+    ChatChannelMappingRepository
+    SendBirdAPI[SendBird Platform]
+    WebhookController["SendBirdWebhookController /webhooks/sendbird/message"]
+    ChatMessageProducer
+    KafkaProducerService
+    KafkaTopic["chat.message.received"]
+    ChatLifecycleConsumer
+    BookingRepository
+
+    AuthUser --> ChatController
+    ChatController --> TokenEndpoint --> ChatTokenService
+    ChatController --> SupportEndpoint --> ChatChannelService
+    ChatTokenService --> SendBirdClient
+    ChatChannelService --> SendBirdClient
+    ChatChannelService --> ChatChannelMappingRepository
+    SendBirdClient --> SendBirdAPI
+    SendBirdAPI --> WebhookController
+    WebhookController --> ChatMessageProducer --> KafkaProducerService --> KafkaTopic
+    KafkaTopic --> NotificationEventListener
+    ChatLifecycleConsumer --> BookingRepository
+    ChatLifecycleConsumer --> ChatChannelService

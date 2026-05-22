@@ -182,6 +182,23 @@ public class BookingService extends BaseService {
         booking.setExpiresAt(expiresAt);
         booking.setStatus(Booking.Status.INITIATED);
         booking.setItems(new ArrayList<>());
+
+        // Resolve delivery address coordinates (destination)
+        try {
+            var addrResp = productClient.getAddressInternal(deliveryAddress, internalApiKey);
+            if (addrResp != null && addrResp.success() && addrResp.data() != null) {
+                var addr = addrResp.data();
+                if (addr.lat() != 0.0 && addr.lng() != 0.0) {
+                    booking.setDeliveryLat(addr.lat());
+                    booking.setDeliveryLng(addr.lng());
+                }
+                booking.setDeliveryAddressText(addr.line1());
+                booking.setDeliveryCity(addr.city());
+            }
+        } catch (Exception e) {
+            log.warn("Could not resolve delivery address coords for addressId={}: {}", deliveryAddress, e.getMessage());
+        }
+
         return booking;
     }
 
@@ -218,6 +235,7 @@ public class BookingService extends BaseService {
         bi.setVariantId(ci.getVariantId());
         bi.setQuantity(ci.getQuantity());
         bi.setPrice(toPaise(BigDecimal.valueOf(ci.getPrice())));
+        bi.setProductName(ci.getName());
         return bi;
     }
 

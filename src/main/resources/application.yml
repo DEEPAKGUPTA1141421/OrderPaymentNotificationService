@@ -1,6 +1,6 @@
 spring:
   kafka:
-    bootstrap-servers: 192.168.1.105:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -12,4 +12,4 @@ spring:
       enable-auto-commit: false
 
 ranking:
-  fixedRateMs: 300000
+  fixedRateMs: ${RANKING_FIXED_RATE_MS:300000}

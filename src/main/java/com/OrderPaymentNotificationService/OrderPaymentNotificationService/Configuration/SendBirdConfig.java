@@ -19,7 +19,6 @@ public class SendBirdConfig {
         restTemplate.setInterceptors(List.of(
             (request, body, execution) -> {
                 request.getHeaders().set("Api-Token", masterApiToken);
-                request.getHeaders().set("Content-Type", "application/json; charset=utf8");
                 return execution.execute(request, body);
             }
         ));

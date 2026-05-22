@@ -36,6 +36,7 @@ public record OrderDetailDto(
             UUID   bookingItemId,
             UUID   productId,
             UUID   variantId,
+            String productName,
             int    quantity,
             String unitPricePaise,
             String unitPriceRupees,
