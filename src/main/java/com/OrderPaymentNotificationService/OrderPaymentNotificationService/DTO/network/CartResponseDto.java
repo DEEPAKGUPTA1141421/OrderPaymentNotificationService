@@ -57,6 +57,12 @@ public class CartResponseDto {
         private UUID             shopId;
         private List<CartItemDto> items;
 
+        // ── Shop / seller location (origin for delivery order) ────────────────
+        private String shopAddress;   // full text address of the seller's shop
+        private String shopCity;
+        private Double shopLat;       // seller lat — origin_lat in Order
+        private Double shopLng;       // seller lng — origin_lng in Order
+
         // ── Already-calculated financials for this shop (rupees) ─────────────
         private double subTotal;                  // raw item total for this shop
         private double itemLevelDiscount;         // item-specific discounts

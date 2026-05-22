@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.ApiResponse;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.network.AddressDto;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.network.CartResponseDto;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.network.ProductDetailDto;
 
@@ -44,6 +45,16 @@ public interface ProductClient {
     ApiResponse<ProductDetailDto> getProductDetailInternal(
             @PathVariable("productId")  UUID productId,
             @PathVariable("variantId")  UUID variantId,
+            @RequestHeader("X-Internal-Api-Key") String internalApiKey
+    );
+
+    /**
+     * Resolves a saved address UUID to lat/lng + text.
+     * Endpoint: GET /internal/v1/address/{addressId}
+     */
+    @GetMapping("/internal/v1/address/{addressId}")
+    ApiResponse<AddressDto> getAddressInternal(
+            @PathVariable("addressId") UUID addressId,
             @RequestHeader("X-Internal-Api-Key") String internalApiKey
     );
 }

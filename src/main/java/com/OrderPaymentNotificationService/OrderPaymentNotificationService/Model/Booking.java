@@ -28,6 +28,19 @@ public class Booking {
     @Column(nullable = false)
     private UUID deliveryAddress;
 
+    // Resolved coordinates for the delivery address (customer/destination)
+    @Column(name = "delivery_lat")
+    private Double deliveryLat;
+
+    @Column(name = "delivery_lng")
+    private Double deliveryLng;
+
+    @Column(name = "delivery_address_text")
+    private String deliveryAddressText;
+
+    @Column(name = "delivery_city")
+    private String deliveryCity;
+
     @Convert(converter = Booking.StatusConverter.class)
     private Status status = Status.INITIATED;
 
