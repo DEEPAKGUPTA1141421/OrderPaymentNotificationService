@@ -29,9 +29,14 @@ public class KeyLoader {
     }
 
     private static byte[] readPem(String path) throws Exception {
-        InputStream is;
-        if (path.startsWith("classpath:")) {
-            // Remove prefix and ensure path starts with "/"
+        String content;
+        if (path.startsWith("env:")) {
+            String varName = path.substring(4);
+            content = System.getenv(varName);
+            if (content == null || content.isBlank()) {
+                throw new IllegalArgumentException("Environment variable not set: " + varName);
+            }
+        } else if (path.startsWith("classpath:")) {
             String resourcePath = path.replace("classpath:", "");
             if (!resourcePath.startsWith("/")) {
                 resourcePath = "/" + resourcePath;
@@ -40,15 +45,19 @@ public class KeyLoader {
             if (!resource.exists()) {
                 throw new IllegalArgumentException("File not found: " + path);
             }
-            is = resource.getInputStream();
+            InputStream is = resource.getInputStream();
+            content = new String(is.readAllBytes());
+            is.close();
+        } else if (path.startsWith("/") || (path.length() > 1 && path.charAt(1) == ':')) {
+            InputStream is = java.nio.file.Files.newInputStream(java.nio.file.Path.of(path));
+            content = new String(is.readAllBytes());
+            is.close();
         } else {
-            is = java.nio.file.Files.newInputStream(java.nio.file.Path.of(path));
+            // value is the raw PEM/base64 content injected directly via ${ENV_VAR}
+            content = path;
         }
 
-        byte[] bytes = is.readAllBytes();
-        is.close();
-
-        String pem = new String(bytes)
+        String pem = content
                 .replaceAll("-----BEGIN (.*)-----", "")
                 .replaceAll("-----END (.*)-----", "")
                 .replaceAll("\\s+", "");
