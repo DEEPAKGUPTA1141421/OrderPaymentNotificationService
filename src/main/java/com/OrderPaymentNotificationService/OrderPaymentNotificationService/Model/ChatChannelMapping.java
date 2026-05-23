@@ -7,13 +7,10 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(
-    name = "chat_channel_mapping",
-    indexes = {
+@Table(name = "chat_channel_mapping", indexes = {
         @Index(name = "idx_ccm_reference", columnList = "reference_id, reference_type"),
-        @Index(name = "idx_ccm_status",    columnList = "status")
-    }
-)
+        @Index(name = "idx_ccm_status", columnList = "status")
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -67,3 +64,4 @@ public class ChatChannelMapping {
     @Column(name = "archived_at")
     private Instant archivedAt;
 }
+// uhjhuj huj ujkj jikkjjjjkkl
