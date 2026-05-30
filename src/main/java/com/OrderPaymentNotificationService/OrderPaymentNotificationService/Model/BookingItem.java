@@ -35,4 +35,7 @@ public class BookingItem {
 
     @Column(nullable = true)
     private String productName; // snapshot at checkout time
+
+    @Column(nullable = true, name = "product_image_url")
+    private String productImageUrl; // snapshot at checkout time
 }

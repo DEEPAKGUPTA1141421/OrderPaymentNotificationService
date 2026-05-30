@@ -94,6 +94,7 @@ public class BookingQueryService extends BaseService {
     // ══════════════════════════════════════════════════════════════════════════
 
     private OrderSummaryDto toSummaryDto(Booking b, Payment payment) {
+        BookingItem first = b.getItems().isEmpty() ? null : b.getItems().get(0);
         return new OrderSummaryDto(
                 b.getId(),
                 b.getShopId(),
@@ -105,7 +106,9 @@ public class BookingQueryService extends BaseService {
                 payment != null ? payment.getStatus().name() : null,
                 payment != null ? derivePaymentMode(payment) : "UNPAID",
                 b.getExpiresAt(),
-                b.getCreatedAt());
+                b.getCreatedAt(),
+                first != null ? first.getProductName() : null,
+                first != null ? first.getProductImageUrl() : null);
     }
 
     private OrderDetailDto toDetailDto(Booking b, Payment payment) {
@@ -134,6 +137,7 @@ public class BookingQueryService extends BaseService {
                 item.getProductId(),
                 item.getVariantId(),
                 item.getProductName(),
+                item.getProductImageUrl(),
                 item.getQuantity(),
                 item.getPrice(),
                 toRupeesStr(item.getPrice()),

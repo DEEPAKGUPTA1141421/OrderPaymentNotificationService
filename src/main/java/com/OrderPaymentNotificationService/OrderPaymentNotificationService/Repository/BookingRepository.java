@@ -61,7 +61,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
               AND b.createdAt >= :from
               AND b.createdAt < :to
             """)
-    Object[] sumOrdersAndRevenueForPeriod(
+    List<Object[]> sumOrdersAndRevenueForPeriod(
             @Param("shopId") UUID shopId,
             @Param("from")   Instant from,
             @Param("to")     Instant to);

@@ -37,6 +37,7 @@ public record OrderDetailDto(
             UUID   productId,
             UUID   variantId,
             String productName,
+            String productImageUrl,
             int    quantity,
             String unitPricePaise,
             String unitPriceRupees,

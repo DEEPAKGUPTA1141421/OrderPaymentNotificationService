@@ -136,8 +136,10 @@ public class SellerBookingService extends BaseService {
         }).toList();
 
         // Period totals for delta computation
-        Object[] curr = bookingRepo.sumOrdersAndRevenueForPeriod(shopId, currentStart, now);
-        Object[] prev = bookingRepo.sumOrdersAndRevenueForPeriod(shopId, prevStart, currentStart);
+        List<Object[]> currList = bookingRepo.sumOrdersAndRevenueForPeriod(shopId, currentStart, now);
+        List<Object[]> prevList = bookingRepo.sumOrdersAndRevenueForPeriod(shopId, prevStart, currentStart);
+        Object[] curr = currList.isEmpty() ? null : currList.get(0);
+        Object[] prev = prevList.isEmpty() ? null : prevList.get(0);
 
         long currOrders  = curr != null && curr[0] != null ? ((Number) curr[0]).longValue() : 0L;
         long currRev     = curr != null && curr[1] != null ? ((Number) curr[1]).longValue() : 0L;
@@ -264,6 +266,7 @@ public class SellerBookingService extends BaseService {
     // ── DTO helpers ───────────────────────────────────────────────────────────
 
     private OrderSummaryDto toSummaryDto(Booking b, Payment payment) {
+        BookingItem first = b.getItems().isEmpty() ? null : b.getItems().get(0);
         return new OrderSummaryDto(
                 b.getId(),
                 b.getShopId(),
@@ -275,7 +278,9 @@ public class SellerBookingService extends BaseService {
                 payment != null ? payment.getStatus().name() : null,
                 payment != null ? derivePaymentMode(payment) : "UNPAID",
                 b.getExpiresAt(),
-                b.getCreatedAt());
+                b.getCreatedAt(),
+                first != null ? first.getProductName() : null,
+                first != null ? first.getProductImageUrl() : null);
     }
 
     private Map<UUID, Payment> batchLoadPayments(List<UUID> ids) {
@@ -345,6 +350,7 @@ public class SellerBookingService extends BaseService {
                 item.getProductId(),
                 item.getVariantId(),
                 item.getProductName(),
+                item.getProductImageUrl(),
                 item.getQuantity(),
                 item.getPrice(),
                 toRupeesStr(item.getPrice()),
