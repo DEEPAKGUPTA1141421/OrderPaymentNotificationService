@@ -73,8 +73,14 @@ public class WebConfig {
 
                                 .authorizeHttpRequests(auth -> auth
 
+                                                // ✅ Preflight requests — no auth required
+                                                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                                                // ✅ Health check — no auth required
+                                                .requestMatchers("/").permitAll()
+
                                                 // ✅ Allow preflight requests
-                                                .requestMatchers("/", "/api/v1/users/wallet/**",
+                                                .requestMatchers("/api/v1/users/wallet/**",
                                                                 "/api/v1/users/payment-methods/**",
                                                                 "/api/v1/users/loyalty-points/**")
                                                 .hasRole("USER")

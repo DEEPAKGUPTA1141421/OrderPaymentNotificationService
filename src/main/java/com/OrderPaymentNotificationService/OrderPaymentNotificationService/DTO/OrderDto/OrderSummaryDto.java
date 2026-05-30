@@ -31,6 +31,8 @@ public record OrderSummaryDto(
         String  paymentStatus,
         String  paymentMode,
         Instant expiresAt,
-        Instant createdAt
+        Instant createdAt,
+        String  firstItemName,       // product name of the first item (pack preview)
+        String  firstItemImageUrl    // product image of the first item (pack preview)
 ) {}
 // juoii9f uoi88rjirfiiuo iuoi9oriouuguhthurf

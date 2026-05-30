@@ -236,6 +236,7 @@ public class BookingService extends BaseService {
         bi.setQuantity(ci.getQuantity());
         bi.setPrice(toPaise(BigDecimal.valueOf(ci.getPrice())));
         bi.setProductName(ci.getName());
+        bi.setProductImageUrl(ci.getImage());
         return bi;
     }
 
