@@ -17,16 +17,21 @@ public interface ProductClient {
 
     /**
      * Internal service-to-service call to fetch a user's active cart.
-     * Protected by the X-Internal-Api-Key header — not exposed to end users.
+     * Protected by the X-Internal-Api-Key header, plus X-Client-Id / X-Client-Secret
+     * client credentials — not exposed to end users.
      *
      * Endpoint in cart service:
      *   GET /internal/v1/cart/{userId}
-     *   Filter: InternalApiKeyFilter validates X-Internal-Api-Key header.
+     *   Filters: InternalApiKeyFilter validates X-Internal-Api-Key (all /internal/**);
+     *   ClientCredentialFilter additionally validates X-Client-Id / X-Client-Secret
+     *   for this cart endpoint only.
      */
     @GetMapping("/internal/v1/cart/{userId}")
     ApiResponse<CartResponseDto> getCartInternal(
             @PathVariable("userId") UUID userId,
-            @RequestHeader("X-Internal-Api-Key") String internalApiKey
+            @RequestHeader("X-Internal-Api-Key") String internalApiKey,
+            @RequestHeader("X-Client-Id") String clientId,
+            @RequestHeader("X-Client-Secret") String clientSecret
     );
 
     /**

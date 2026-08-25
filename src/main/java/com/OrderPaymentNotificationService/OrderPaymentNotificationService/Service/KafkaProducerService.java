@@ -1,20 +1,19 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service;
 
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.messaging.EventPublisher;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 @Lazy
 public class KafkaProducerService {
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final EventPublisher eventPublisher;
 
-    public KafkaProducerService(KafkaTemplate<String, String> kafkaTemplate) {
-        this.kafkaTemplate = kafkaTemplate;
+    public KafkaProducerService(EventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
     }
 
     public void sendMessage(String topic, String message) {
-        kafkaTemplate.send(topic, message);
-        System.out.println("Sent: " + message);
+        eventPublisher.publish(topic, message);
     }
 }

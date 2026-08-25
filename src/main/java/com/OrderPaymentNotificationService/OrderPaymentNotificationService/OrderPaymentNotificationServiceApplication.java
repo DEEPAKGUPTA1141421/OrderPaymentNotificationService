@@ -8,7 +8,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-//import io.github.cdimascio.dotenv.Dotenv;
+import io.github.cdimascio.dotenv.Dotenv;
 
 @SpringBootApplication
 @EnableAsync
@@ -18,13 +18,13 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class OrderPaymentNotificationServiceApplication {
 
 	public static void main(String[] args) {
-		// Dotenv dotenv = Dotenv.configure()
-		// .directory("./src/main/resources") // path to your .env file
-		// .load();
+		 Dotenv dotenv = Dotenv.configure()
+		 .directory("./src/main/resources") // path to your .env file
+		 .load();
 
-		// // Set all env vars so Spring can use them
-		// dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(),
-		// entry.getValue()));
+		 // Set all env vars so Spring can use them
+		 dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(),
+		 entry.getValue()));
 		SpringApplication.run(OrderPaymentNotificationServiceApplication.class, args);
 	}
 

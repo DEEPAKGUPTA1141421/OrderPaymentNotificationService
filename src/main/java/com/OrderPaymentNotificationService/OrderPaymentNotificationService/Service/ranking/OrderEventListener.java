@@ -1,6 +1,7 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ranking;
 
-import org.springframework.kafka.annotation.KafkaListener;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,21 +12,36 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repos
 
 import java.util.UUID;
 
+/**
+ * Handles the orders.events topic to maintain shop ranking stats. Delivered
+ * via Kafka or Redis depending on app.messaging.provider (see
+ * KafkaMessagingListenerConfig / RedisMessagingListenerConfig).
+ */
 @Service
+@Slf4j
 public class OrderEventListener {
 
     private final ShopStatsRepository shopStatsRepository;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     public OrderEventListener(ShopStatsRepository shopStatsRepository,
-            RedisTemplate<String, Object> redisTemplate) {
+            RedisTemplate<String, Object> redisTemplate,
+            ObjectMapper objectMapper) {
         this.shopStatsRepository = shopStatsRepository;
         this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
     }
 
-    @KafkaListener(topics = "orders.events", groupId = "orderservice-group")
     @Transactional
-    public void handle(OrderPlacedEvent event) {
+    public void handle(String payload) {
+        OrderPlacedEvent event;
+        try {
+            event = objectMapper.readValue(payload, OrderPlacedEvent.class);
+        } catch (Exception e) {
+            log.warn("[OrderEventListener] Failed to parse orders.events payload: {}", e.getMessage());
+            return;
+        }
         UUID sellerId = event.getSellerId();
         ShopStats stats = shopStatsRepository.findById(sellerId)
                 .orElseGet(() -> ShopStats.builder()

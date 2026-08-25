@@ -6,12 +6,12 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Payment;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.BookingRepository;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.PaymentRepository;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.messaging.EventPublisher;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -31,9 +31,9 @@ import java.util.UUID;
 @Slf4j
 public class ReceiptProducerService {
 
-    static final String TOPIC = "order.receipt.generate";
+    public static final String TOPIC = "order.receipt.generate";
 
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final EventPublisher                 eventPublisher;
     private final ObjectMapper                  objectMapper;
     private final BookingRepository             bookingRepository;
     private final PaymentRepository             paymentRepository;
@@ -111,7 +111,7 @@ public class ReceiptProducerService {
     private void sendEvent(ReceiptEvent event) {
         try {
             String json = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send(TOPIC, event.getBookingId().toString(), json);
+            eventPublisher.publish(TOPIC, event.getBookingId().toString(), json);
             log.info("Receipt event published | bookingId={} paymentMode={}",
                     event.getBookingId(), event.getPaymentMode());
         } catch (JsonProcessingException e) {
