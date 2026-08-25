@@ -2,11 +2,11 @@ package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Serv
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.delivery.BookingConfirmedEvent;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Booking;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.messaging.EventPublisher;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -18,7 +18,7 @@ public class BookingConfirmedProducer {
 
     static final String TOPIC = "booking.confirmed";
 
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final EventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
     public void publish(Booking booking) {
@@ -33,7 +33,7 @@ public class BookingConfirmedProducer {
 
         try {
             String json = objectMapper.writeValueAsString(event);
-            kafkaTemplate.send(TOPIC, booking.getId().toString(), json);
+            eventPublisher.publish(TOPIC, booking.getId().toString(), json);
             log.info("BookingConfirmedEvent published | bookingId={} customerId={}",
                     booking.getId(), booking.getUserId());
         } catch (JsonProcessingException e) {

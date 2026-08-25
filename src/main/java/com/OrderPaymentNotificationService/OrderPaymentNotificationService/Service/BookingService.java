@@ -37,14 +37,21 @@ public class BookingService extends BaseService {
     @Value("${internal.api.key}")
     private String internalApiKey;
 
+    @Value("${internal.client.id}")
+    private String internalClientId;
+
+    @Value("${internal.client.secret}")
+    private String internalClientSecret;
+
     // ══════════════════════════════════════════════════════════════════════════
     // Public entry point
     // ══════════════════════════════════════════════════════════════════════════
 
     @Transactional
     public ApiResponse<Object> createBookingFromCart(UUID deliveryAddress) {
+        boolean lockAcquired = false;
         try {
-            // guardAgainstConcurrentCheckout(); i will uncomment this
+            lockAcquired = guardAgainstConcurrentCheckout();
 
             CartResponseDto cart = fetchAndValidateCart();
 
@@ -78,6 +85,10 @@ public class BookingService extends BaseService {
         } catch (Exception e) {
             log.error("Booking creation failed | userId={} error={}", getUserId(), e.getMessage(), e);
             return new ApiResponse<>(false, "Booking creation failed: " + e.getMessage(), null, 500);
+        } finally {
+            if (lockAcquired) {
+                redisLockService.releaseCartLock(getUserId());
+            }
         }
     }
 
@@ -85,11 +96,12 @@ public class BookingService extends BaseService {
     // Step 1 — Concurrency guard
     // ══════════════════════════════════════════════════════════════════════════
 
-    private void guardAgainstConcurrentCheckout() {
+    private boolean guardAgainstConcurrentCheckout() {
         if (!redisLockService.acquireCartLock(getUserId(), BOOKING_EXPIRY_MINUTES)) {
             throw new IllegalStateException(
                     "Checkout already in progress for this account. Please wait.");
         }
+        return true;
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -97,7 +109,8 @@ public class BookingService extends BaseService {
     // ══════════════════════════════════════════════════════════════════════════
 
     private CartResponseDto fetchAndValidateCart() {
-        ApiResponse<CartResponseDto> response = productClient.getCartInternal(getUserId(), internalApiKey);
+        ApiResponse<CartResponseDto> response = productClient.getCartInternal(
+                getUserId(), internalApiKey, internalClientId, internalClientSecret);
 
         if (isNetworkCallFail(response.statusCode(), response.success())) {
             throw new RuntimeException("Cart service error: " + response.message());

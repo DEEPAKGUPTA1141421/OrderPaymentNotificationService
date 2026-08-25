@@ -6,26 +6,27 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repos
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Utils.DateTimeUtil;
 
 /**
- * Kafka consumer for the {@code order.receipt.generate} topic.
+ * Handles the {@code order.receipt.generate} topic. Delivered via Kafka or
+ * Redis depending on app.messaging.provider (see KafkaMessagingListenerConfig
+ * / RedisMessagingListenerConfig).
  *
  * Flow:
  *  1. Deserialise JSON → ReceiptEvent
  *  2. Idempotency guard — skip if receipt already saved for this booking
  *  3. Generate PDF bytes via ReceiptGeneratorService
  *  4. Persist Receipt entity
- *  5. Acknowledge Kafka offset (manual ACK mode)
  *
- * On failure the offset is NOT acknowledged, so the message is retried on
- * the next poll.  A dead-letter topic (order.receipt.dlq) can be wired in
- * later for messages that keep failing.
+ * On failure this method throws (rather than swallowing), so the Kafka
+ * registrar skips acknowledging the offset and the message is retried on
+ * the next poll — same "no ack on failure" semantics as before. Under
+ * Redis pub/sub there is no such redelivery; a failure there is just
+ * logged and dropped.
  */
 @Service
 @RequiredArgsConstructor
@@ -37,49 +38,36 @@ public class ReceiptConsumerService {
     private final ReceiptGeneratorService  generatorService;
     private final ReceiptRepository        receiptRepository;
 
-    // ══════════════════════════════════════════════════════════════════════════
-    //  Kafka listener
-    // ══════════════════════════════════════════════════════════════════════════
-
-    @KafkaListener(
-            topics            = ReceiptProducerService.TOPIC,
-            groupId           = "receipt-generator-group",
-            containerFactory  = "receiptListenerContainerFactory"
-    )
     @Transactional
-    public void handleReceiptEvent(String message, Acknowledgment ack) {
-        ReceiptEvent event = null;
+    public void handleReceiptEvent(String message) {
+        ReceiptEvent event;
         try {
             event = objectMapper.readValue(message, ReceiptEvent.class);
-            log.info("Receipt event received | bookingId={}", event.getBookingId());
-
-            // Idempotency — guard against duplicate delivery
-            if (receiptRepository.existsByBookingId(event.getBookingId())) {
-                log.info("Receipt already generated (idempotent skip) | bookingId={}", event.getBookingId());
-                ack.acknowledge();
-                return;
-            }
-
-            String invoiceNumber = buildInvoiceNumber(event);
-            byte[] pdfBytes      = generatorService.generatePdf(event, invoiceNumber);
-
-            Receipt receipt = new Receipt();
-            receipt.setBookingId(event.getBookingId());
-            receipt.setUserId(event.getUserId());
-            receipt.setInvoiceNumber(invoiceNumber);
-            receipt.setPdfBytes(pdfBytes);
-            receiptRepository.save(receipt);
-
-            log.info("Receipt saved | bookingId={} invoiceNumber={} sizeBytes={}",
-                    event.getBookingId(), invoiceNumber, pdfBytes.length);
-
-            ack.acknowledge();   // commit offset only after successful save
-
         } catch (Exception e) {
-            log.error("Receipt generation failed — offset NOT acknowledged (will retry) | bookingId={}",
-                    event != null ? event.getBookingId() : "UNKNOWN", e);
-            // No ack → Kafka will redeliver this message on the next poll
+            log.error("Receipt event payload could not be parsed — dropping (not retried): {}", e.getMessage(), e);
+            return;
         }
+
+        log.info("Receipt event received | bookingId={}", event.getBookingId());
+
+        // Idempotency — guard against duplicate delivery
+        if (receiptRepository.existsByBookingId(event.getBookingId())) {
+            log.info("Receipt already generated (idempotent skip) | bookingId={}", event.getBookingId());
+            return;
+        }
+
+        String invoiceNumber = buildInvoiceNumber(event);
+        byte[] pdfBytes      = generatorService.generatePdf(event, invoiceNumber);
+
+        Receipt receipt = new Receipt();
+        receipt.setBookingId(event.getBookingId());
+        receipt.setUserId(event.getUserId());
+        receipt.setInvoiceNumber(invoiceNumber);
+        receipt.setPdfBytes(pdfBytes);
+        receiptRepository.save(receipt);
+
+        log.info("Receipt saved | bookingId={} invoiceNumber={} sizeBytes={}",
+                event.getBookingId(), invoiceNumber, pdfBytes.length);
     }
 
     // ══════════════════════════════════════════════════════════════════════════

@@ -1,13 +1,9 @@
 package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.NotificationDto.NotificationEvent;
@@ -44,17 +40,21 @@ public class NotificationEventListener {
 
     private final NotificationDispatcher dispatcher;
     private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
     private static final String DEDUP_KEY_PREFIX = "notif_dedup:";
     private static final Duration DEDUP_TTL = Duration.ofHours(24);
 
-    @KafkaListener(topics = "notification.events", groupId = "notification-service-group", containerFactory = "notificationEventListenerContainerFactory", concurrency = "3")
-    public void onNotificationEvent(NotificationEvent event,
-            @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
-            @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
-            @Header(KafkaHeaders.OFFSET) long offset) {
-        log.info("[NotifEventListener] Received: topic={}, partition={}, offset={}, userId={}, category={}",
-                topic, partition, offset, event.getUserId(), event.getCategory());
+    public void handleNotificationEvent(String payload) {
+        NotificationEvent event;
+        try {
+            event = objectMapper.readValue(payload, NotificationEvent.class);
+        } catch (Exception e) {
+            log.warn("[NotifEventListener] Failed to parse notification.events payload: {}", e.getMessage());
+            return;
+        }
+        log.info("[NotifEventListener] Received: userId={}, category={}",
+                event.getUserId(), event.getCategory());
 
         // 1. Validate required fields
         if (event.getUserId() == null || event.getCategory() == null

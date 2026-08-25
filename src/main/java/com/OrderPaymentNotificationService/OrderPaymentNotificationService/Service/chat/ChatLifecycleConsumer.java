@@ -3,12 +3,18 @@ package com.OrderPaymentNotificationService.OrderPaymentNotificationService.Serv
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.chat.OrderLifecycleEvent;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.ranking.OrderPlacedEvent;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.BookingRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+/**
+ * Handles order-lifecycle events for SendBird chat channel management.
+ * Delivered via Kafka or Redis depending on app.messaging.provider (see
+ * KafkaMessagingListenerConfig / RedisMessagingListenerConfig for the
+ * topic wiring — topic names are configurable via chat.lifecycle.* props).
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -16,21 +22,24 @@ public class ChatLifecycleConsumer {
 
     private final ChatChannelService chatChannelService;
     private final BookingRepository bookingRepository;
+    private final ObjectMapper objectMapper;
 
     /**
-     * Listens to the orders.events topic (same topic as the ranking service,
-     * but using the separate chat-lifecycle-group consumer group so both
-     * consumers receive every event independently).
+     * Handles the orders.events topic (same topic as the ranking service's
+     * OrderEventListener, but as an independent subscriber so both receive
+     * every event).
      *
      * Looks up the Booking to get customerId, since OrderPlacedEvent only
      * carries orderId + sellerId.
      */
-    @KafkaListener(
-        topics         = "${chat.lifecycle.order-placed.topic:orders.events}",
-        groupId        = "chat-lifecycle-group",
-        containerFactory = "chatOrderPlacedContainerFactory"
-    )
-    public void onOrderPlaced(OrderPlacedEvent event) {
+    public void handleOrderPlaced(String payload) {
+        OrderPlacedEvent event;
+        try {
+            event = objectMapper.readValue(payload, OrderPlacedEvent.class);
+        } catch (Exception e) {
+            log.warn("[ChatLifecycleConsumer] Failed to parse OrderPlaced payload: {}", e.getMessage());
+            return;
+        }
         log.info("[ChatLifecycleConsumer] OrderPlaced: orderId={}", event.getOrderId());
         try {
             bookingRepository.findById(event.getOrderId()).ifPresentOrElse(
@@ -45,15 +54,17 @@ public class ChatLifecycleConsumer {
     }
 
     /**
-     * Listens to rider.assigned.events topic (configure chat.lifecycle.rider-assigned.topic).
+     * Handles the rider.assigned.events topic (chat.lifecycle.rider-assigned.topic).
      * OrderLifecycleEvent must carry orderId + customerId + riderId.
      */
-    @KafkaListener(
-        topics         = "${chat.lifecycle.rider-assigned.topic:rider.assigned.events}",
-        groupId        = "chat-lifecycle-group",
-        containerFactory = "chatLifecycleContainerFactory"
-    )
-    public void onRiderAssigned(OrderLifecycleEvent event) {
+    public void handleRiderAssigned(String payload) {
+        OrderLifecycleEvent event;
+        try {
+            event = objectMapper.readValue(payload, OrderLifecycleEvent.class);
+        } catch (Exception e) {
+            log.warn("[ChatLifecycleConsumer] Failed to parse RiderAssigned payload: {}", e.getMessage());
+            return;
+        }
         log.info("[ChatLifecycleConsumer] RiderAssigned: orderId={}, riderId={}", event.getOrderId(), event.getRiderId());
         if (event.getOrderId() == null || event.getCustomerId() == null || event.getRiderId() == null) {
             log.warn("[ChatLifecycleConsumer] Dropping malformed RiderAssigned event: {}", event);
@@ -69,15 +80,17 @@ public class ChatLifecycleConsumer {
     }
 
     /**
-     * Listens to order.delivered.events topic (configure chat.lifecycle.order-delivered.topic).
+     * Handles the order.delivered.events topic (chat.lifecycle.order-delivered.topic).
      * Closes the rider channel immediately; schedules seller channel archival after 7 days.
      */
-    @KafkaListener(
-        topics         = "${chat.lifecycle.order-delivered.topic:order.delivered.events}",
-        groupId        = "chat-lifecycle-group",
-        containerFactory = "chatLifecycleContainerFactory"
-    )
-    public void onOrderDelivered(OrderLifecycleEvent event) {
+    public void handleOrderDelivered(String payload) {
+        OrderLifecycleEvent event;
+        try {
+            event = objectMapper.readValue(payload, OrderLifecycleEvent.class);
+        } catch (Exception e) {
+            log.warn("[ChatLifecycleConsumer] Failed to parse OrderDelivered payload: {}", e.getMessage());
+            return;
+        }
         log.info("[ChatLifecycleConsumer] OrderDelivered: orderId={}", event.getOrderId());
         if (event.getOrderId() == null) {
             log.warn("[ChatLifecycleConsumer] Dropping malformed OrderDelivered event: {}", event);
