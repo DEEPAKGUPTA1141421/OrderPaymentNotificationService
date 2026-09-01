@@ -56,6 +56,7 @@ public class CodPaymentService {
     private final BookingRepository     bookingRepository;
     private final StringRedisTemplate   redisTemplate;
     private final RedisLockService      redisLockService;
+    private final SellerNotificationEvents sellerNotificationEvents;
 
     // ══════════════════════════════════════════════════════════════════════════
     //  1.  Generate OTP   (ROLE_USER endpoint)
@@ -198,6 +199,9 @@ public class CodPaymentService {
 
             log.info("COD payment confirmed | transactionId={} paymentId={} deliveryBoyId={}",
                     req.transactionId(), payment.getId(), deliveryBoyId);
+
+            bookingRepository.findById(payment.getBookingId())
+                    .ifPresent(sellerNotificationEvents::notifyPaymentReceived);
 
         } finally {
             redisLockService.releaseLock(CONFIRM_LOCK_PREFIX, deliveryBoyId, req.transactionId());

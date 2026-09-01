@@ -89,6 +89,11 @@ application-*.properties
 *.crt
 *.key
 
+### Firebase ###
+# Local-dev-only fallback credential; prefer FIREBASE_PROJECT_ID /
+# FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY env vars in real environments.
+src/main/resources/firebase-service-account.json
+
 ### Logs / Temp ###
 logs/
 *.log

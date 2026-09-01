@@ -4,14 +4,17 @@ import org.springframework.stereotype.Service;
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.ApiResponse;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.CreateOrderDto;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Booking;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Payment;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Transaction;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.BookingRepository;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.PaymentRepository;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.TransactionRepository;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.BaseService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.RazorpayService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ReceiptProducerService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.RedisLockService;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.SellerNotificationEvents;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -37,9 +40,11 @@ public class RazorpayPaymentGateway extends BaseService implements PaymentGatewa
 
     private final PaymentRepository      paymentRepository;
     private final TransactionRepository  transactionRepository;
+    private final BookingRepository      bookingRepository;
     private final RazorpayService        razorpayService;
     private final RedisLockService       redisLockService;
     private final ReceiptProducerService receiptProducerService;
+    private final SellerNotificationEvents sellerNotificationEvents;
 
     // ══════════════════════════════════════════════════════════════════════════
     //  createOrder
@@ -259,6 +264,11 @@ public class RazorpayPaymentGateway extends BaseService implements PaymentGatewa
         paymentRepository.save(payment);
 
         receiptProducerService.publishForBooking(payment.getBookingId());
+
+        bookingRepository.findById(payment.getBookingId()).ifPresent(booking -> {
+            sellerNotificationEvents.notifyNewOrder(booking);
+            sellerNotificationEvents.notifyPaymentReceived(booking);
+        });
     }
 
     private void markFailed(Transaction tx) {
@@ -268,6 +278,9 @@ public class RazorpayPaymentGateway extends BaseService implements PaymentGatewa
         Payment payment = tx.getPayment();
         payment.setStatus(Payment.Status.FAILED);
         paymentRepository.save(payment);
+
+        bookingRepository.findById(payment.getBookingId())
+                .ifPresent(sellerNotificationEvents::notifyPaymentFailed);
     }
 
     private Payment buildPayment(CreateOrderDto dto) {

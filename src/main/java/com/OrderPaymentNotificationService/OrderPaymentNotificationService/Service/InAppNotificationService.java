@@ -77,6 +77,22 @@ public class InAppNotificationService extends BaseService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // UNREAD COUNT (GET /api/v1/users/notifications/unread-count)
+    // Cheap, dedicated endpoint for bell-badge refresh (no full feed fetch).
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public ApiResponse<Object> getUnreadCount() {
+        try {
+            long unreadCount = notifRepo.countByUserIdAndReadFalseAndDeletedFalse(getUserId());
+            return new ApiResponse<>(true, "Unread count fetched", Map.of("unreadCount", unreadCount), 200);
+        } catch (Exception e) {
+            log.error("getUnreadCount failed for user {}: {}", getUserId(), e.getMessage(), e);
+            return new ApiResponse<>(false, "Failed to fetch unread count", null, 500);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // MARK AS READ (PATCH /api/v1/users/notifications/{id}/read)
     // ─────────────────────────────────────────────────────────────────────────
 

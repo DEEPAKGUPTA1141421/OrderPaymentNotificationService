@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Function;
@@ -30,6 +32,8 @@ import java.util.stream.Collectors;
 public class SellerBookingService extends BaseService {
 
     private static final int MAX_PAGE_SIZE = 50;
+    /** Number of points in the "Current balance" sparklines (Earning/Customer/Payouts cards). */
+    private static final int SPARKLINE_DAYS = 7;
 
     private final BookingRepository     bookingRepo;
     private final PaymentRepository     paymentRepo;
@@ -105,7 +109,8 @@ public class SellerBookingService extends BaseService {
     @Transactional
     public ApiResponse<Object> getShopStats(int days) {
         UUID shopId  = getUserId();
-        int  clampedDays = Math.min(Math.max(1, days), 365);
+        // 3650 (~10y) doubles as the effective "all time" ceiling for the seller app's period picker.
+        int  clampedDays = Math.min(Math.max(1, days), 3650);
 
         // Status breakdown (all-time)
         List<Object[]> statusCounts = bookingRepo.countByStatusForShop(shopId);
@@ -162,7 +167,66 @@ public class SellerBookingService extends BaseService {
         stats.put("ordersChange",     Math.round(ordersChange  * 10.0) / 10.0);
         stats.put("revenueChange",    Math.round(revenueChange * 10.0) / 10.0);
 
+        // Earning sparkline — always the last 7 calendar days of revenue (rupees),
+        // independent of the `days` window, for the "Current balance" Earning card.
+        Instant sparkSince = now.minus(SPARKLINE_DAYS - 1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
+        List<Object[]> earningRows = bookingRepo.dailyStatsForShopSince(shopId, sparkSince);
+        List<Double> earningSparkline = buildSparkline(
+                earningRows.stream().map(row -> new Object[]{row[0], row[2]}).toList(),
+                sparkSince, SPARKLINE_DAYS, true);
+        stats.put("earningSparkline", earningSparkline);
+
         return new ApiResponse<>(true, "Stats fetched", stats, 200);
+    }
+
+    // ── GET /api/v1/seller/stats/customers?days=7 ─────────────────────────────
+
+    @Transactional
+    public ApiResponse<Object> getCustomerStats(int days) {
+        UUID shopId      = getUserId();
+        // 3650 (~10y) doubles as the effective "all time" ceiling for the seller app's period picker.
+        int  clampedDays = Math.min(Math.max(1, days), 3650);
+
+        Instant now          = Instant.now();
+        Instant currentStart = now.minus(clampedDays - 1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
+        Instant prevStart    = currentStart.minus(clampedDays, ChronoUnit.DAYS);
+
+        long totalCustomers = bookingRepo.countDistinctCustomersByShopId(shopId);
+
+        long currCustomers = bookingRepo.countDistinctCustomersForPeriod(shopId, currentStart, now);
+        long prevCustomers = bookingRepo.countDistinctCustomersForPeriod(shopId, prevStart, currentStart);
+        long newCustomers  = bookingRepo.countNewCustomersForPeriod(shopId, currentStart, now);
+        long returningCustomers = Math.max(0, currCustomers - newCustomers);
+
+        double customersChange = prevCustomers == 0 ? 0
+                : ((double) (currCustomers - prevCustomers) / prevCustomers) * 100;
+
+        // Monthly trend over the last 12 months, for the chart
+        Instant trendSince = now.minus(365, ChronoUnit.DAYS);
+        List<Object[]> monthlyRows = bookingRepo.monthlyDistinctCustomers(shopId, trendSince);
+        List<Map<String, Object>> monthlyTrend = monthlyRows.stream().map(row -> {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("month",     row[0].toString());
+            entry.put("customers", ((Number) row[1]).longValue());
+            return entry;
+        }).toList();
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("totalCustomers",      totalCustomers);
+        data.put("newCustomers",        newCustomers);
+        data.put("returningCustomers",  returningCustomers);
+        data.put("customersChangePercent", Math.round(customersChange * 10.0) / 10.0);
+        data.put("monthlyTrend",        monthlyTrend);
+        data.put("days",                clampedDays);
+
+        // Customer sparkline — daily new-customer counts for the last 7 days, for the
+        // "Current balance" Customer card.
+        Instant sparkSince = now.minus(SPARKLINE_DAYS - 1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
+        List<Object[]> newCustRows = bookingRepo.dailyNewCustomers(shopId, sparkSince);
+        List<Double> sparkline = buildSparkline(newCustRows, sparkSince, SPARKLINE_DAYS, false);
+        data.put("sparkline", sparkline);
+
+        return new ApiResponse<>(true, "Customer stats fetched", data, 200);
     }
 
     // ── GET /api/v1/seller/orders/status-counts ───────────────────────────────
@@ -189,6 +253,7 @@ public class SellerBookingService extends BaseService {
 
         long earnedPaise  = bookingRepo.sumDeliveredByShopId(shopId);
         long pendingPaise = bookingRepo.sumPendingByShopId(shopId);
+        long totalSalesPaise = bookingRepo.sumRevenueByShopId(shopId);
 
         // Last 10 delivered orders as settlement history
         Page<Booking> recentPage = bookingRepo.findByShopIdAndStatus(
@@ -216,9 +281,109 @@ public class SellerBookingService extends BaseService {
         data.put("totalEarnedRupees", toRupeesStr(String.valueOf(earnedPaise)));
         data.put("pendingPaise",      pendingPaise);
         data.put("pendingRupees",     toRupeesStr(String.valueOf(pendingPaise)));
+        data.put("totalSalesPaise",   totalSalesPaise);
+        data.put("totalSalesRupees",  toRupeesStr(String.valueOf(totalSalesPaise)));
         data.put("recentSettlements", settlements);
 
+        // Week-over-week deltas for the three Earnings-page stat cards (Earning / Balance / Total value of sales).
+        Instant now          = Instant.now();
+        Instant currentStart = now.minus(6, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
+        Instant prevStart    = currentStart.minus(7, ChronoUnit.DAYS);
+
+        long currEarned = bookingRepo.sumDeliveredForPeriod(shopId, currentStart, now);
+        long prevEarned = bookingRepo.sumDeliveredForPeriod(shopId, prevStart, currentStart);
+        long currPending = bookingRepo.sumPendingForPeriod(shopId, currentStart, now);
+        long prevPending = bookingRepo.sumPendingForPeriod(shopId, prevStart, currentStart);
+        List<Object[]> currSalesList = bookingRepo.sumOrdersAndRevenueForPeriod(shopId, currentStart, now);
+        List<Object[]> prevSalesList = bookingRepo.sumOrdersAndRevenueForPeriod(shopId, prevStart, currentStart);
+        long currSales = currSalesList.isEmpty() || currSalesList.get(0)[1] == null ? 0L : ((Number) currSalesList.get(0)[1]).longValue();
+        long prevSales = prevSalesList.isEmpty() || prevSalesList.get(0)[1] == null ? 0L : ((Number) prevSalesList.get(0)[1]).longValue();
+
+        data.put("earnedChangePercent",     pctDelta(prevEarned, currEarned));
+        data.put("balanceChangePercent",    pctDelta(prevPending, currPending));
+        data.put("totalSalesChangePercent", pctDelta(prevSales, currSales));
+
+        // Sparklines for the three stat cards — last 7 calendar days.
+        Instant sparkSince = now.minus(SPARKLINE_DAYS - 1, ChronoUnit.DAYS).truncatedTo(ChronoUnit.DAYS);
+        List<Object[]> earnedRows  = bookingRepo.dailyDeliveredRevenue(shopId, sparkSince);
+        List<Object[]> pendingRows = bookingRepo.dailyPendingRevenue(shopId, sparkSince);
+        List<Object[]> salesRows   = bookingRepo.dailyStatsForShopSince(shopId, sparkSince);
+        data.put("sparkline", buildSparkline(earnedRows, sparkSince, SPARKLINE_DAYS, true));
+        data.put("balanceSparkline", buildSparkline(pendingRows, sparkSince, SPARKLINE_DAYS, true));
+        data.put("totalSalesSparkline", buildSparkline(
+                salesRows.stream().map(row -> new Object[]{row[0], row[2]}).toList(),
+                sparkSince, SPARKLINE_DAYS, true));
+
         return new ApiResponse<>(true, "Earnings fetched", data, 200);
+    }
+
+    private double pctDelta(long prev, long curr) {
+        double pct = prev == 0 ? 0 : ((double) (curr - prev) / prev) * 100;
+        return Math.round(pct * 10.0) / 10.0;
+    }
+
+    // ── GET /api/v1/seller/earnings/history?page=&size= ───────────────────────
+
+    @Transactional
+    public ApiResponse<Object> getSellerEarningsHistory(int page, int size) {
+        UUID shopId = getUserId();
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.min(Math.max(1, size), MAX_PAGE_SIZE));
+
+        Page<Object[]> rows = bookingRepo.dailyEarningsBreakdown(shopId, pageable);
+        Map<String, String> methodByKey = buildMethodLookup(shopId);
+
+        List<Map<String, Object>> history = rows.getContent().stream().map(row -> {
+            String day     = row[0].toString();
+            String bucket  = row[1].toString();
+            long earningsPaise = ((Number) row[4]).longValue();
+            long withdrawnPaise = "PAID".equals(bucket) ? earningsPaise : 0L;
+
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("date",                 day);
+            m.put("status",               bucket);
+            m.put("orderCount",           ((Number) row[2]).longValue());
+            m.put("productSalesCount",    ((Number) row[3]).longValue());
+            m.put("earningsPaise",        earningsPaise);
+            m.put("earningsRupees",       toRupeesStr(String.valueOf(earningsPaise)));
+            m.put("method",               methodByKey.getOrDefault(day + "|" + bucket, "UNKNOWN"));
+            m.put("amountWithdrawnPaise", withdrawnPaise);
+            m.put("amountWithdrawnRupees", toRupeesStr(String.valueOf(withdrawnPaise)));
+            return m;
+        }).toList();
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("history",     history);
+        data.put("currentPage", rows.getNumber());
+        data.put("hasMore",     rows.hasNext());
+
+        return new ApiResponse<>(true, "Earnings history fetched", data, 200);
+    }
+
+    /** Builds a "yyyy-MM-dd|PAID|PENDING" -> dominant payment-method label lookup. */
+    private Map<String, String> buildMethodLookup(UUID shopId) {
+        List<Object[]> rows = bookingRepo.dailyPaymentModeBreakdown(shopId);
+        Map<String, String> result = new HashMap<>();
+        for (Object[] row : rows) {
+            String key = row[0].toString() + "|" + row[1].toString();
+            long cod     = ((Number) row[2]).longValue();
+            long gateway = ((Number) row[3]).longValue();
+            long points  = ((Number) row[4]).longValue();
+
+            String label;
+            if (cod == 0 && gateway == 0 && points == 0) {
+                label = "UNKNOWN";
+            } else if (gateway > 0 && points > 0 && cod == 0) {
+                label = "MIXED";
+            } else if (cod >= gateway && cod >= points) {
+                label = "COD";
+            } else if (gateway >= points) {
+                label = "ONLINE";
+            } else {
+                label = "POINTS";
+            }
+            result.put(key, label);
+        }
+        return result;
     }
 
     // ── GET /api/v1/seller/orders/{bookingId} ─────────────────────────────────
@@ -249,18 +414,41 @@ public class SellerBookingService extends BaseService {
         List<Object[]> rows = bookingItemRepo.topProductsByRevenue(shopId, clampedLimit);
 
         List<Map<String, Object>> products = rows.stream().map(row -> {
-            long revPaise = row[3] != null ? ((Number) row[3]).longValue() : 0L;
+            long revPaise = row[4] != null ? ((Number) row[4]).longValue() : 0L;
             Map<String, Object> entry = new LinkedHashMap<>();
-            entry.put("productId",      row[0] != null ? row[0].toString() : null);
-            entry.put("productName",    row[1] != null ? row[1].toString() : "Unknown");
-            entry.put("totalQty",       row[2] != null ? ((Number) row[2]).longValue() : 0L);
-            entry.put("revenuePaise",   revPaise);
-            entry.put("revenueRupees",  new BigDecimal(revPaise)
+            entry.put("productId",       row[0] != null ? row[0].toString() : null);
+            entry.put("productName",     row[1] != null ? row[1].toString() : "Unknown");
+            entry.put("productImageUrl", row[2] != null ? row[2].toString() : null);
+            entry.put("totalQty",        row[3] != null ? ((Number) row[3]).longValue() : 0L);
+            entry.put("revenuePaise",    revPaise);
+            entry.put("revenueRupees",   new BigDecimal(revPaise)
                     .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP).toPlainString());
             return entry;
         }).toList();
 
         return new ApiResponse<>(true, "Top products fetched", products, 200);
+    }
+
+    /**
+     * Builds a fixed-length, oldest-to-newest sparkline from {day, value} rows, filling
+     * in zeros for any day in the window that has no row. {@code toRupees} converts a
+     * paise value (long) to rupees (double); pass {@code false} for plain counts.
+     */
+    private List<Double> buildSparkline(List<Object[]> rows, Instant since, int points, boolean toRupees) {
+        Map<LocalDate, Double> byDay = new HashMap<>();
+        for (Object[] row : rows) {
+            LocalDate day = LocalDate.parse(row[0].toString());
+            double value = ((Number) row[1]).doubleValue();
+            byDay.put(day, value);
+        }
+        LocalDate start = since.atZone(ZoneOffset.UTC).toLocalDate();
+        List<Double> result = new ArrayList<>(points);
+        for (int i = 0; i < points; i++) {
+            LocalDate day = start.plusDays(i);
+            double value = byDay.getOrDefault(day, 0.0);
+            result.add(toRupees ? Math.round(value) / 100.0 : value);
+        }
+        return result;
     }
 
     // ── DTO helpers ───────────────────────────────────────────────────────────

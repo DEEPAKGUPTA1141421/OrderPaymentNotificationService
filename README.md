@@ -182,9 +182,12 @@ FCM_*                    Firebase service account
 TWILIO_ACCOUNT_SID/AUTH  Twilio credentials
 SENDGRID_API_KEY         SendGrid key
 SENDBIRD_APP_ID/TOKEN    SendBird credentials
-JWT_PRIVATE_KEY_PATH     RS256 private key (signing)
-JWT_PUBLIC_KEY_PATH      RS256 public key (verification)
 ```
+
+RS256 JWT verification uses the bundled key pair under `src/main/resources/keys/`
+(identical to ProductClientService's — the service that actually issues
+tokens). Not env-configurable on purpose: this service only verifies tokens,
+never issues its own, so its public key must always match the issuer's.
 
 ---
 

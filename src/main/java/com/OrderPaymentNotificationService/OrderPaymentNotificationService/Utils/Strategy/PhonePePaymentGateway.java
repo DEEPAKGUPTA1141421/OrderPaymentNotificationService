@@ -5,12 +5,14 @@ import org.springframework.stereotype.Service;
 
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.ApiResponse;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.DTO.CreateOrderDto;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Booking;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Payment;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Transaction;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Payment.Status;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.WalletTransaction.TransactionStatus;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Wallet;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.WalletTransaction;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.BookingRepository;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.PaymentRepository;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.TransactionRepository;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repository.WalletRepository;
@@ -19,6 +21,7 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Servi
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.PhonePeService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ReceiptProducerService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.RedisLockService;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.SellerNotificationEvents;
 
 import java.util.Optional;
 
@@ -44,8 +47,10 @@ public class PhonePePaymentGateway extends BaseService implements PaymentGateway
     private final PhonePeService              phonePeService;
     private final WalletTransactionRepository txRepo;
     private final WalletRepository            walletRepo;
+    private final BookingRepository           bookingRepository;
     private final RedisLockService            redisLockService;
     private final ReceiptProducerService      receiptProducerService;
+    private final SellerNotificationEvents    sellerNotificationEvents;
 
     @Value("${payment.webhook.secret}")
     private String webhookSecret;
@@ -220,6 +225,11 @@ public class PhonePePaymentGateway extends BaseService implements PaymentGateway
             // Publish receipt generation event to Kafka
             receiptProducerService.publishForBooking(payment.getBookingId());
 
+            bookingRepository.findById(payment.getBookingId()).ifPresent(booking -> {
+                sellerNotificationEvents.notifyNewOrder(booking);
+                sellerNotificationEvents.notifyPaymentReceived(booking);
+            });
+
             log.info("Payment confirmed via PhonePe webhook | txId={} paymentId={} method={}",
                     tx.getId(), payment.getId(), tx.getMethod());
             return new ApiResponse<>(true, "Payment confirmed", null, 200);
@@ -231,6 +241,9 @@ public class PhonePePaymentGateway extends BaseService implements PaymentGateway
 
             payment.setStatus(Payment.Status.FAILED);
             paymentRepository.save(payment);
+
+            bookingRepository.findById(payment.getBookingId())
+                    .ifPresent(sellerNotificationEvents::notifyPaymentFailed);
 
             log.warn("Payment failed via PhonePe webhook | txId={} paymentId={}", tx.getId(), payment.getId());
             return new ApiResponse<>(true, "Payment marked failed", null, 200);
