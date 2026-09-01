@@ -63,6 +63,16 @@ public class InAppNotificationController {
     }
 
     /**
+     * Dedicated unread-count endpoint — cheap, for bell-badge refresh
+     * (e.g. on app resume) without paging through the full feed.
+     */
+    @GetMapping("/unread-count")
+    public ResponseEntity<ApiResponse<Object>> getUnreadCount() {
+        ApiResponse<Object> response = notificationService.getUnreadCount();
+        return ResponseEntity.status(response.statusCode()).body(response);
+    }
+
+    /**
      * Mark a single notification as read.
      * Returns 404 if the notification doesn't belong to the user or is deleted.
      */

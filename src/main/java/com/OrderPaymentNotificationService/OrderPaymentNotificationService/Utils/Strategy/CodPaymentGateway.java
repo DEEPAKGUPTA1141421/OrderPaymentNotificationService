@@ -10,6 +10,7 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Repos
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.BaseService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ReceiptProducerService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.RedisLockService;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.SellerNotificationEvents;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class CodPaymentGateway extends BaseService implements PaymentGateway {
     private final BookingRepository    bookingRepository;
     private final RedisLockService     redisLockService;
     private final ReceiptProducerService receiptProducerService;
+    private final SellerNotificationEvents sellerNotificationEvents;
 
     // ══════════════════════════════════════════════════════════════════════════
     // createOrder
@@ -47,6 +49,8 @@ public class CodPaymentGateway extends BaseService implements PaymentGateway {
 
         booking.setStatus(Booking.Status.CONFIRMED);
         bookingRepository.save(booking);
+
+        sellerNotificationEvents.notifyNewOrder(booking);
 
         // releaseDuplicatePaymentLock(dto.bookingId()); i will comment this
 

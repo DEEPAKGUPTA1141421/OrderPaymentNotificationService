@@ -5,6 +5,8 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Servi
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ReceiptConsumerService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ReceiptProducerService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.chat.ChatLifecycleConsumer;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.invoice.InvoiceDeliveryConsumerService;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.invoice.InvoiceDeliveryProducerService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ranking.OrderEventListener;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +53,7 @@ public class KafkaMessagingListenerConfig {
     private final ChatLifecycleConsumer chatLifecycleConsumer;
     private final OrderEventListener orderEventListener;
     private final ReceiptConsumerService receiptConsumerService;
+    private final InvoiceDeliveryConsumerService invoiceDeliveryConsumerService;
 
     @PostConstruct
     public void startListeners() {
@@ -61,6 +64,7 @@ public class KafkaMessagingListenerConfig {
         listen(riderAssignedTopic, "chat-lifecycle-group", chatLifecycleConsumer::handleRiderAssigned);
         listen(orderDeliveredTopic, "chat-lifecycle-group", chatLifecycleConsumer::handleOrderDelivered);
         listen(ReceiptProducerService.TOPIC, "receipt-generator-group", receiptConsumerService::handleReceiptEvent);
+        listen(InvoiceDeliveryProducerService.TOPIC, "invoice-delivery-group", invoiceDeliveryConsumerService::handleDeliveryEvent);
         log.info("Kafka messaging listeners started (app.messaging.provider=kafka)");
     }
 

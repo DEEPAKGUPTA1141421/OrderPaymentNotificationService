@@ -45,6 +45,15 @@ public class FcmPushNotificationService extends BaseService {
     @Value("${fcm.enabled:false}")
     private boolean fcmEnabled;
 
+    @Value("${FIREBASE_PROJECT_ID:}")
+    private String envProjectId;
+
+    @Value("${FIREBASE_CLIENT_EMAIL:}")
+    private String envClientEmail;
+
+    @Value("${FIREBASE_PRIVATE_KEY:}")
+    private String envPrivateKey;
+
     private FirebaseMessaging firebaseMessaging;
 
     public FcmPushNotificationService(DeviceTokenRepository deviceTokenRepo,
@@ -62,18 +71,7 @@ public class FcmPushNotificationService extends BaseService {
             return;
         }
         try {
-            InputStream serviceAccount;
-            if (serviceAccountFile.startsWith("classpath:")) {
-                String path = serviceAccountFile.replace("classpath:", "");
-                serviceAccount = new ClassPathResource(path).getInputStream();
-            } else {
-                serviceAccount = java.nio.file.Files.newInputStream(
-                        java.nio.file.Path.of(serviceAccountFile));
-            }
-
-            GoogleCredentials credentials = GoogleCredentials
-                    .fromStream(serviceAccount)
-                    .createScoped(List.of("https://www.googleapis.com/auth/firebase.messaging"));
+            GoogleCredentials credentials = loadCredentials();
 
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(credentials)
@@ -89,6 +87,45 @@ public class FcmPushNotificationService extends BaseService {
             log.error("[FCM] Firebase initialization failed: {}", e.getMessage());
             // Do not throw — app should still start without push
         }
+    }
+
+    /**
+     * Prefer env-var-supplied credentials (FIREBASE_PROJECT_ID /
+     * FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY) so nothing needs to be
+     * committed to the repo; fall back to the classpath/file service-account
+     * JSON for local dev.
+     */
+    private GoogleCredentials loadCredentials() throws java.io.IOException {
+        if (!envProjectId.isBlank() && !envClientEmail.isBlank() && !envPrivateKey.isBlank()) {
+            String privateKey = envPrivateKey.replace("\\n", "\n");
+            String serviceAccountJson = """
+                    {
+                      "type": "service_account",
+                      "project_id": "%s",
+                      "private_key": "%s",
+                      "client_email": "%s",
+                      "token_uri": "https://oauth2.googleapis.com/token"
+                    }
+                    """.formatted(envProjectId, privateKey.replace("\n", "\\n"), envClientEmail);
+            log.info("[FCM] Loading Firebase credentials from environment variables.");
+            return GoogleCredentials
+                    .fromStream(new java.io.ByteArrayInputStream(
+                            serviceAccountJson.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                    .createScoped(List.of("https://www.googleapis.com/auth/firebase.messaging"));
+        }
+
+        InputStream serviceAccount;
+        if (serviceAccountFile.startsWith("classpath:")) {
+            String path = serviceAccountFile.replace("classpath:", "");
+            serviceAccount = new ClassPathResource(path).getInputStream();
+        } else {
+            serviceAccount = java.nio.file.Files.newInputStream(
+                    java.nio.file.Path.of(serviceAccountFile));
+        }
+        log.info("[FCM] Loading Firebase credentials from {}", serviceAccountFile);
+        return GoogleCredentials
+                .fromStream(serviceAccount)
+                .createScoped(List.of("https://www.googleapis.com/auth/firebase.messaging"));
     }
 
     // ─────────────────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ public interface BookingItemRepository extends JpaRepository<BookingItem, UUID> 
             SELECT
                 bi.product_id                                        AS productId,
                 bi.product_name                                      AS productName,
+                MAX(bi.product_image_url)                            AS productImageUrl,
                 SUM(bi.quantity)                                     AS totalQty,
                 SUM(CAST(bi.price AS BIGINT) * bi.quantity)         AS totalRevenuePaise
             FROM booking_items bi

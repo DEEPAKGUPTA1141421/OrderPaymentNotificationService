@@ -37,7 +37,7 @@ public class WebConfig {
 
                 // Allow all standard HTTP methods
                 config.setAllowedMethods(List.of(
-                                "GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
                 // Allow headers
                 config.setAllowedHeaders(List.of(

@@ -5,6 +5,8 @@ import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Servi
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ReceiptConsumerService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ReceiptProducerService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.chat.ChatLifecycleConsumer;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.invoice.InvoiceDeliveryConsumerService;
+import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.invoice.InvoiceDeliveryProducerService;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Service.ranking.OrderEventListener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +58,7 @@ public class RedisMessagingListenerConfig {
     private final ChatLifecycleConsumer chatLifecycleConsumer;
     private final OrderEventListener orderEventListener;
     private final ReceiptConsumerService receiptConsumerService;
+    private final InvoiceDeliveryConsumerService invoiceDeliveryConsumerService;
 
     @Bean
     public RedisMessageListenerContainer redisMessageListenerContainer(RedisConnectionFactory connectionFactory) {
@@ -69,6 +72,7 @@ public class RedisMessagingListenerConfig {
         subscribe(container, riderAssignedTopic, chatLifecycleConsumer::handleRiderAssigned);
         subscribe(container, orderDeliveredTopic, chatLifecycleConsumer::handleOrderDelivered);
         subscribe(container, ReceiptProducerService.TOPIC, receiptConsumerService::handleReceiptEvent);
+        subscribe(container, InvoiceDeliveryProducerService.TOPIC, invoiceDeliveryConsumerService::handleDeliveryEvent);
 
         log.info("Redis pub/sub messaging listeners started (app.messaging.provider=redis)");
         return container;

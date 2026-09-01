@@ -73,6 +73,14 @@ public class SellerBookingController {
         return ResponseEntity.status(res.statusCode()).body(res);
     }
 
+    // ── GET /api/v1/seller/stats/customers?days=7 ────────────────────────────
+    @GetMapping("/api/v1/seller/stats/customers")
+    public ResponseEntity<?> getCustomerStats(
+            @RequestParam(defaultValue = "7") int days) {
+        ApiResponse<Object> res = sellerBookingService.getCustomerStats(days);
+        return ResponseEntity.status(res.statusCode()).body(res);
+    }
+
     // ── GET /api/v1/seller/orders/status-counts ──────────────────────────────
     @GetMapping("/api/v1/seller/orders/status-counts")
     public ResponseEntity<?> getStatusCounts() {
@@ -84,6 +92,15 @@ public class SellerBookingController {
     @GetMapping("/api/v1/seller/earnings")
     public ResponseEntity<?> getSellerEarnings() {
         ApiResponse<Object> res = sellerBookingService.getSellerEarnings();
+        return ResponseEntity.status(res.statusCode()).body(res);
+    }
+
+    // ── GET /api/v1/seller/earnings/history?page=0&size=20 ───────────────────
+    @GetMapping("/api/v1/seller/earnings/history")
+    public ResponseEntity<?> getSellerEarningsHistory(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        ApiResponse<Object> res = sellerBookingService.getSellerEarningsHistory(page, size);
         return ResponseEntity.status(res.statusCode()).body(res);
     }
 }
