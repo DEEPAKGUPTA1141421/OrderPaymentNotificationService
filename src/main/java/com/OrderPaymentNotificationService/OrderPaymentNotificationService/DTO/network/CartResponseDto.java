@@ -41,8 +41,28 @@ public class CartResponseDto {
     private String cartCoupon;        // e.g. "BIG1000"
     private String cartLineDiscount;  // coupon discount amount as string, e.g. "1000"
 
+    // ── Membership add-on (D2D Prime) ──────────────────────────────────────────
+    // NOTE: grandTotal above already includes membershipCharge when membershipAdded
+    // is true — both fields must be read here too, or booking totals silently
+    // drop this charge relative to what the cart displayed to the user.
+    private boolean membershipAdded;
+    private double  membershipCharge;
+
     /** Any stock/availability issues detected by the cart service. */
-    private List<String> validationIssues;
+    private List<ValidationIssueDto> validationIssues;
+
+    /** Mirrors ProductClientService's CartValidationIssue record shape. */
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ValidationIssueDto {
+        private String type;         // OUT_OF_STOCK | INSUFFICIENT_STOCK | ITEM_UNAVAILABLE | COUPON_EXPIRED | CART_COUPON_EXPIRED
+        private UUID   cartItemId;   // null for cart-level issues
+        private UUID   productId;    // null for cart-level issues
+        private String message;
+    }
 
     // ══════════════════════════════════════════════════════════════════════════
     //  Per-shop sub-order breakdown (cart service does all the math for us)

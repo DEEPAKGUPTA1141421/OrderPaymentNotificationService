@@ -57,16 +57,22 @@ public class BookingService extends BaseService {
 
             double sumSubOrderTotals = sumSubOrderTotals(cart);
             BigDecimal serviceCharge = BigDecimal.valueOf(cart.getServiceCharge());
+            BigDecimal membershipCharge = cart.isMembershipAdded()
+                    ? BigDecimal.valueOf(cart.getMembershipCharge()) : BigDecimal.ZERO;
+            BigDecimal flatCharges = serviceCharge.add(membershipCharge);
             Instant expiresAt = bookingExpiry();
 
             List<Map<String, Object>> summaries = new ArrayList<>();
+            BigDecimal bookedTotal = BigDecimal.ZERO;
 
             for (SubOrderDto subOrder : cart.getSubOrders()) {
                 validateStockAvailability(subOrder);
 
-                BigDecimal bookingTotal = calculateBookingTotal(subOrder, serviceCharge, sumSubOrderTotals);
-                BigDecimal shopService = proportionalServiceCharge(subOrder, serviceCharge, sumSubOrderTotals);
+                BigDecimal bookingTotal = calculateBookingTotal(subOrder, flatCharges, sumSubOrderTotals);
+                BigDecimal shopService = proportionalShare(subOrder, serviceCharge, sumSubOrderTotals);
+                BigDecimal shopMembership = proportionalShare(subOrder, membershipCharge, sumSubOrderTotals);
                 String totalPaise = toPaise(bookingTotal);
+                bookedTotal = bookedTotal.add(bookingTotal);
 
                 Booking booking = buildBooking(subOrder, deliveryAddress, totalPaise, expiresAt);
                 lockAndAttachItems(booking, subOrder.getItems());
@@ -75,8 +81,10 @@ public class BookingService extends BaseService {
                 log.info("Booking created | bookingId={} shopId={} userId={} amountPaise={}",
                         booking.getId(), subOrder.getShopId(), getUserId(), totalPaise);
 
-                summaries.add(buildSummary(booking, subOrder, bookingTotal, shopService, expiresAt));
+                summaries.add(buildSummary(booking, subOrder, bookingTotal, shopService, shopMembership, expiresAt));
             }
+
+            validatePricingConsistency(cart, bookedTotal);
 
             return successResponse(summaries, cart, expiresAt);
 
@@ -122,7 +130,12 @@ public class BookingService extends BaseService {
             throw new IllegalStateException("Cart is empty");
         }
         if (cart.getValidationIssues() != null && !cart.getValidationIssues().isEmpty()) {
-            throw new IllegalStateException("Cart has issues: " + cart.getValidationIssues());
+            String summary = cart.getValidationIssues().stream()
+                    .map(CartResponseDto.ValidationIssueDto::getMessage)
+                    .filter(Objects::nonNull)
+                    .reduce((a, b) -> a + "; " + b)
+                    .orElse("Cart has unresolved issues");
+            throw new IllegalStateException("Cart has issues: " + summary);
         }
         if (cart.getSubOrders() == null || cart.getSubOrders().isEmpty()) {
             throw new RuntimeException("Cart subOrders breakdown is missing");
@@ -160,25 +173,49 @@ public class BookingService extends BaseService {
         return sum;
     }
 
-    private BigDecimal proportionalServiceCharge(SubOrderDto subOrder,
-            BigDecimal serviceCharge,
+    /** This shop's proportional slice of a cart-level flat charge (service charge, membership, ...). */
+    private BigDecimal proportionalShare(SubOrderDto subOrder,
+            BigDecimal flatCharge,
             double sumSubOrderTotals) {
+        if (flatCharge.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
         BigDecimal ratio = BigDecimal.valueOf(subOrder.getSubOrderTotal())
                 .divide(BigDecimal.valueOf(sumSubOrderTotals), 10, RoundingMode.HALF_UP);
-        return serviceCharge.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
+        return flatCharge.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calculateBookingTotal(SubOrderDto subOrder,
-            BigDecimal serviceCharge,
+            BigDecimal flatCharges,
             double sumSubOrderTotals) {
         return BigDecimal.valueOf(subOrder.getSubOrderTotal())
-                .add(proportionalServiceCharge(subOrder, serviceCharge, sumSubOrderTotals));
+                .add(proportionalShare(subOrder, flatCharges, sumSubOrderTotals));
     }
 
     private String toPaise(BigDecimal rupees) {
         return rupees.multiply(BigDecimal.valueOf(100))
                 .setScale(0, RoundingMode.HALF_UP)
                 .toPlainString();
+    }
+
+    /**
+     * Hard guard against silent pricing drift between the cart's own grandTotal
+     * (what the user was shown) and the sum of amounts actually booked. A past
+     * bug let the membership add-on charge disappear from bookings entirely —
+     * this check makes any future divergence a loud failure instead of an
+     * under/over-charge shipped to the customer. Allows a 1-paise tolerance for
+     * per-booking rounding (each subOrder's proportional shares are rounded to
+     * 2dp independently, so the sum can drift by a paise or two).
+     */
+    private void validatePricingConsistency(CartResponseDto cart, BigDecimal bookedTotal) {
+        BigDecimal expected = BigDecimal.valueOf(cart.getGrandTotal()).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal actual = bookedTotal.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal diff = expected.subtract(actual).abs();
+
+        if (diff.compareTo(BigDecimal.valueOf(0.02)) > 0) {
+            log.error("Pricing mismatch at checkout | userId={} cartGrandTotal={} bookedTotal={} diff={}",
+                    getUserId(), expected, actual, diff);
+            throw new IllegalStateException(
+                    "Pricing check failed — booking total does not match cart total. Please refresh your cart and try again.");
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -258,7 +295,7 @@ public class BookingService extends BaseService {
     // ══════════════════════════════════════════════════════════════════════════
 
     private Map<String, Object> buildSummary(Booking booking, SubOrderDto subOrder,
-            BigDecimal bookingTotal, BigDecimal shopService,
+            BigDecimal bookingTotal, BigDecimal shopService, BigDecimal shopMembership,
             Instant expiresAt) {
         return Map.of(
                 "bookingId", booking.getId(),
@@ -266,20 +303,25 @@ public class BookingService extends BaseService {
                 "itemCount", subOrder.getItems().size(),
                 "totalAmountPaise", booking.getTotalAmount(),
                 "totalAmountRupees", bookingTotal.setScale(2, RoundingMode.HALF_UP),
-                "breakdownRupees", buildBreakdown(subOrder, shopService, bookingTotal),
+                "breakdownRupees", buildBreakdown(subOrder, shopService, shopMembership, bookingTotal),
                 "expiresAt", expiresAt.toString(),
                 "status", "INITIATED");
     }
 
-    private Map<String, Object> buildBreakdown(SubOrderDto s, BigDecimal shopService, BigDecimal grandTotal) {
-        return Map.of(
-                "subTotal", scale(s.getSubTotal()),
-                "itemDiscount", scale(s.getItemLevelDiscount()).negate(),
-                "couponDiscount", scale(s.getProportionalCartDiscount()).negate(),
-                "gst", scale(s.getGstCharge()),
-                "delivery", scale(s.getDeliveryCharge()),
-                "serviceCharge", shopService,
-                "grandTotal", grandTotal.setScale(2, RoundingMode.HALF_UP));
+    private Map<String, Object> buildBreakdown(SubOrderDto s, BigDecimal shopService,
+            BigDecimal shopMembership, BigDecimal grandTotal) {
+        Map<String, Object> breakdown = new LinkedHashMap<>();
+        breakdown.put("subTotal", scale(s.getSubTotal()));
+        breakdown.put("itemDiscount", scale(s.getItemLevelDiscount()).negate());
+        breakdown.put("couponDiscount", scale(s.getProportionalCartDiscount()).negate());
+        breakdown.put("gst", scale(s.getGstCharge()));
+        breakdown.put("delivery", scale(s.getDeliveryCharge()));
+        breakdown.put("serviceCharge", shopService);
+        if (shopMembership.compareTo(BigDecimal.ZERO) > 0) {
+            breakdown.put("membershipCharge", shopMembership);
+        }
+        breakdown.put("grandTotal", grandTotal.setScale(2, RoundingMode.HALF_UP));
+        return breakdown;
     }
 
     private ApiResponse<Object> successResponse(List<Map<String, Object>> summaries,

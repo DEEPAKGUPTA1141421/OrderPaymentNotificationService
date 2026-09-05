@@ -79,6 +79,10 @@ public class WebConfig {
                                                 // ✅ Health check — no auth required
                                                 .requestMatchers("/").permitAll()
 
+                                                // ─── Admin oversight endpoints ────────────────────────
+                                                .requestMatchers("/api/v1/admin/**")
+                                                .hasRole("ADMIN")
+
                                                 // ✅ Allow preflight requests
                                                 .requestMatchers("/api/v1/users/wallet/**",
                                                                 "/api/v1/users/payment-methods/**",

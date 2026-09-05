@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -14,7 +15,11 @@ import org.springframework.stereotype.Repository;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Booking;
 
 @Repository
-public interface BookingRepository extends JpaRepository<Booking, UUID> {
+public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpecificationExecutor<Booking> {
+
+    /** Status breakdown across ALL shops — used by the admin dashboard. */
+    @Query("SELECT b.status, COUNT(b) FROM Booking b GROUP BY b.status")
+    List<Object[]> countByStatusGlobal();
 
     /** Paginated list of all bookings for a given user. Sorted via Pageable. */
     Page<Booking> findByUserId(UUID userId, Pageable pageable);

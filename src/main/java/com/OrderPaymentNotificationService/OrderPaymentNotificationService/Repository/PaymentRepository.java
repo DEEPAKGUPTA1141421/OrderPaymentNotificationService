@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,7 +14,14 @@ import org.springframework.stereotype.Repository;
 import com.OrderPaymentNotificationService.OrderPaymentNotificationService.Model.Payment;
 
 @Repository
-public interface PaymentRepository extends JpaRepository<Payment, UUID> {
+public interface PaymentRepository extends JpaRepository<Payment, UUID>, JpaSpecificationExecutor<Payment> {
+
+    /** Count of payments in a given status — used by the admin dashboard (e.g. FAILED count). */
+    long countByStatus(Payment.Status status);
+
+    /** Total collected volume (paise) across all SUCCESS payments — used by the admin dashboard. */
+    @Query("SELECT COALESCE(SUM(CAST(p.totalAmount AS long)), 0) FROM Payment p WHERE p.status = 'SUCCESS'")
+    long sumSuccessfulPaymentVolume();
 
     /** Find all payments for a given booking (usually 1, but supports splits). */
     List<Payment> findByBookingId(UUID bookingId);
